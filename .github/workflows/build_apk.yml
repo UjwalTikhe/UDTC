@@ -5,7 +5,7 @@ on:
     branches: [ main, master ]
   pull_request:
     branches: [ main, master ]
-  workflow_dispatch: # Allows manual trigger from GitHub Actions tab
+  workflow_dispatch:
 
 jobs:
   build:
@@ -29,21 +29,9 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: Cache Gradle Packages
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
-
-      - name: Prepare Flutter Project Scaffolding
+      - name: Flutter Pub Get
         working-directory: mobile_app
-        run: |
-          flutter create . --platforms=android --project-name=sih_field_drug_testing
-          flutter pub get
+        run: flutter pub get
 
       - name: Build Release APK
         working-directory: mobile_app
