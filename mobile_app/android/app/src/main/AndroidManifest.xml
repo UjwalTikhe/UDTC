@@ -1,5 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="in.gov.ncb.fieldtesting">
+    package="gov.ncb.fieldtesting">
 
     <!-- Section 8.1 Runtime Permissions for Field Drug Testing Companion -->
     <!-- Core capture and live ArUco gating -->

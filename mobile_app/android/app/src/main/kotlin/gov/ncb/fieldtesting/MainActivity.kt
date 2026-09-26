@@ -1,4 +1,4 @@
-package in.gov.ncb.fieldtesting
+package gov.ncb.fieldtesting
 
 import android.telephony.SmsManager
 import io.flutter.embedding.android.FlutterActivity
