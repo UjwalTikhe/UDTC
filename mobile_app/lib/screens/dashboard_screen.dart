@@ -114,8 +114,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Scaffold(
       backgroundColor: GovTheme.bgBase,
       appBar: AppBar(
-        title: InkWell(
-          borderRadius: BorderRadius.circular(8),
+        title: GestureDetector(
+          behavior: HitTestBehavior.opaque,
           onTap: () async {
             final updatedUser = await Navigator.push<User>(
               context,
@@ -127,9 +127,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
               setState(() => _user = updatedUser);
             }
           },
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
-            child: Row(
+          child: InkWell(
+            borderRadius: BorderRadius.circular(8),
+            onTap: () async {
+              final updatedUser = await Navigator.push<User>(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ProfileSettingsScreen(currentUser: _user),
+                ),
+              );
+              if (updatedUser != null && mounted) {
+                setState(() => _user = updatedUser);
+              }
+            },
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+              child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
@@ -177,7 +190,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ),
         ),
-        actions: [
+      ),
+      actions: [
           IconButton(
             icon: _isSyncing
                 ? const SizedBox(

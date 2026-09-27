@@ -28,8 +28,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       TextEditingController(text: "Officer@123");
   bool _obscureLoginPassword = true;
 
-  // Sign Up Controllers (Email & Password only + Name)
-  final TextEditingController _signUpNameController = TextEditingController();
+  // Sign Up Controllers (Strictly Email & Password only)
   final TextEditingController _signUpEmailController = TextEditingController();
   final TextEditingController _signUpPasswordController = TextEditingController();
   final TextEditingController _signUpConfirmPasswordController = TextEditingController();
@@ -59,7 +58,6 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     _tabController.dispose();
     _loginEmailController.dispose();
     _loginPasswordController.dispose();
-    _signUpNameController.dispose();
     _signUpEmailController.dispose();
     _signUpPasswordController.dispose();
     _signUpConfirmPasswordController.dispose();
@@ -133,7 +131,6 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     final email = _signUpEmailController.text.trim();
     final password = _signUpPasswordController.text;
     final confirmPassword = _signUpConfirmPasswordController.text;
-    final name = _signUpNameController.text.trim();
 
     if (email.isEmpty) {
       setState(() => _errorMessage = "Please enter your official email address.");
@@ -162,7 +159,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       final newUser = await _db.registerUserWithEmail(
         email: email,
         password: password,
-        name: name.isNotEmpty ? name : null,
+        name: null,
       );
 
       // Initialize crypto key
@@ -537,28 +534,15 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            "Register Officer Account",
+            "Quick Officer Sign Up",
             style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: GovTheme.ashokaNavy),
           ),
           const SizedBox(height: 4),
           const Text(
-            "Sign up with your email and password only. You can complete official MHA Police Verification & Device Binding inside your Profile.",
+            "Sign up with your official Email and Password only. You can add personal info (Name, Gender, Date of Birth) and complete MHA Badge Verification inside your Profile.",
             style: TextStyle(fontSize: 11.5, color: GovTheme.textSecondary),
           ),
           const SizedBox(height: 16),
-
-          // Full Name
-          TextField(
-            controller: _signUpNameController,
-            decoration: const InputDecoration(
-              labelText: "OFFICER FULL NAME",
-              hintText: "e.g., PSI Ujwal Tikhe",
-              prefixIcon: Icon(Icons.badge_outlined, size: 20),
-              border: OutlineInputBorder(),
-              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-            ),
-          ),
-          const SizedBox(height: 14),
 
           // Official Email
           TextField(
@@ -622,7 +606,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                 SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    "After signing up, your profile will be active in field mode. Visit your Profile from the top-left of the Dashboard to bind your official MHA Badge Number and verify your identity.",
+                    "Instant Setup: After signing up, tap the top-left of the Dashboard to view your Profile, add personal details (Gender, Date of Birth), and verify your MHA Badge Number.",
                     style: TextStyle(fontSize: 11, color: GovTheme.textPrimary, height: 1.3),
                   ),
                 ),
