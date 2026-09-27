@@ -147,7 +147,7 @@ class TestAnalysisScreen extends StatelessWidget {
                               locationResult: locationResult,
                               accusedPresent: accusedPresent,
                               elapsedReactionSeconds: elapsedReactionSeconds,
-                              reagentWindowOk: isReactionWindowValid,
+                              isReactionWindowValid: isReactionWindowValid,
                             ),
                           ),
                         );

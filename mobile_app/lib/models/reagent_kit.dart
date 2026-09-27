@@ -25,6 +25,8 @@ class ReagentKit {
     required this.description,
   });
 
+  String get substanceTarget => targetDrug;
+
   static const List<ReagentKit> allKits = [
     ReagentKit(
       id: "MARQUIS_OPIATE",

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../theme/gov_theme.dart';
 import '../models/domain_models.dart';
 import '../services/local_ledger_database.dart';
-import '../services/crypto_signer_service.dart';
 import 'login_screen.dart';
 
 /// Screen 15: Profile & Apparatus Settings Screen
@@ -233,7 +232,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                       style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.white),
                     ),
                   ),
-                  const SizedBox(height: GovTheme.space12 ?? 12),
+                  const SizedBox(height: GovTheme.space12),
 
                   // Sign Out Button
                   OutlinedButton.icon(

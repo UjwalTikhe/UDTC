@@ -130,6 +130,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
         actions: [
           IconButton(
+            icon: _isSyncing
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                  )
+                : const Icon(Icons.sync),
+            tooltip: "Sync Pending Records",
+            onPressed: _isSyncing ? null : _triggerManualSync,
+          ),
+          IconButton(
             icon: const Icon(Icons.account_circle),
             tooltip: "Officer Profile & Settings",
             onPressed: () {

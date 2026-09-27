@@ -82,7 +82,7 @@ class ResultScreen extends StatelessWidget {
                   // 1. Prominent High-Contrast Result Badge (Icon + Text + Tint)
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.all(GovTheme.space20 ?? 20),
+                    padding: const EdgeInsets.all(GovTheme.space20),
                     decoration: BoxDecoration(
                       color: badgeBg,
                       borderRadius: BorderRadius.circular(8),

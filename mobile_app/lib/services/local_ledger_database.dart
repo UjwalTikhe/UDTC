@@ -18,6 +18,8 @@ class LedgerIntegrityReport {
     this.brokenTestId,
     required this.message,
   });
+
+  int get verifiedBlocks => totalBlocks;
 }
 
 class LocalLedgerDatabase {

@@ -363,7 +363,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     if (_errorMessage != null) ...[
                       const SizedBox(height: GovTheme.space16),
                       Container(
-                        padding: const EdgeInsets.all(GovTheme.space12 ?? 12),
+                        padding: const EdgeInsets.all(GovTheme.space12),
                         decoration: BoxDecoration(
                           color: GovTheme.alertPositiveBg,
                           borderRadius: BorderRadius.circular(8),

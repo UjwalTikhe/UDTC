@@ -77,7 +77,7 @@ class _KitSelectionScreenState extends State<KitSelectionScreen> {
                     colorShift: "Expected Positive: Deep Purple / Violet",
                     icon: Icons.science,
                   ),
-                  const SizedBox(height: GovTheme.space12 ?? 12),
+                  const SizedBox(height: GovTheme.space12),
 
                   // Option 2: PCDK
                   _buildKitCard(
@@ -89,7 +89,7 @@ class _KitSelectionScreenState extends State<KitSelectionScreen> {
                     colorShift: "Expected Positive: Indigo-Blue / Violet in Chloroform",
                     icon: Icons.grass,
                   ),
-                  const SizedBox(height: GovTheme.space12 ?? 12),
+                  const SizedBox(height: GovTheme.space12),
 
                   // Option 3: KDK
                   _buildKitCard(

@@ -88,11 +88,19 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen> {
       try {
         final pos = await LocationService.instance.getCurrentPosition().timeout(
           const Duration(seconds: 5),
-          onTimeout: () => null,
+          onTimeout: () => LocationResult(
+            latitude: null,
+            longitude: null,
+            status: "LOCATION_UNCONFIRMED",
+            isConfirmed: false,
+          ),
         );
-        if (pos != null && pos.latitude != null && pos.longitude != null) {
+        if (pos.isConfirmed && pos.latitude != null && pos.longitude != null) {
           geoPoint = GeoPoint(latitude: pos.latitude!, longitude: pos.longitude!);
           locationConfirmed = true;
+        } else if (pos.latitude != null && pos.longitude != null) {
+          geoPoint = GeoPoint(latitude: pos.latitude!, longitude: pos.longitude!);
+          locationConfirmed = false;
         }
       } catch (_) {
         locationConfirmed = false;

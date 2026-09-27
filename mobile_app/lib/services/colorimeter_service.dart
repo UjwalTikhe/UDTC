@@ -22,6 +22,8 @@ class ColorimetryResult {
     required this.expectedRgbColor,
     required this.legalExplanation,
   });
+
+  double get confidence => confidenceScore;
 }
 
 class ColorimeterService {

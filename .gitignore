@@ -13,6 +13,9 @@ __pycache__/
 .pub/
 *.apk
 ncb-field-drug-testing-companion-release/
+**/.gradle/
+**/local.properties
+**/.flutter-plugins*
 
 # IDE files
 .vscode/
