@@ -1,12 +1,12 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import '../theme/gov_theme.dart';
 import '../models/domain_models.dart';
 import 'result_screen.dart';
 
 /// Screen 8: Processing Screen
-/// Computes illumination correction matrix, CIE Lab ΔE2000 color distance,
-/// and cross-checks false-positive interferent database.
+/// Analyzes reaction color, checks illumination, and confirms match against narcotics database.
 class ProcessingScreen extends StatefulWidget {
   final User currentUser;
   final KitType selectedKit;
@@ -16,6 +16,7 @@ class ProcessingScreen extends StatefulWidget {
   final GeoPoint? location;
   final bool locationConfirmed;
   final double laplacianVariance;
+  final File? capturedImageFile;
 
   const ProcessingScreen({
     super.key,
@@ -27,6 +28,7 @@ class ProcessingScreen extends StatefulWidget {
     this.location,
     required this.locationConfirmed,
     required this.laplacianVariance,
+    this.capturedImageFile,
   });
 
   @override
@@ -37,12 +39,12 @@ class _ProcessingScreenState extends State<ProcessingScreen> {
   int _currentStep = 0;
 
   final List<String> _steps = [
-    "Detecting 4-Corner ArUco Markers & Card Homography...",
-    "Computing Reference Gray Step-Wedge Illumination Matrix...",
-    "Converting Reaction ROI from sRGB to CIE L*a*b* Colorspace...",
-    "Executing CIEDE2000 Distance Calculation against Standard Curve...",
-    "Cross-Referencing NDPS Reagent Interferents Table...",
-    "Finalizing Evidence Package & Tamper Pre-Hash...",
+    "1. Aligning Test Card & Verifying Corner Markers...",
+    "2. Calibrating Field Lighting & Removing Glare...",
+    "3. Isolating Reaction Spot & Reading Color...",
+    "4. Comparing Color against MHA Forensic Drug Standards...",
+    "5. Screening for Cutting Agents & False Positives...",
+    "6. Sealing Evidence with Tamper-Proof Cryptographic Lock...",
   ];
 
   @override
@@ -126,6 +128,7 @@ class _ProcessingScreenState extends State<ProcessingScreen> {
           location: widget.location,
           locationConfirmed: widget.locationConfirmed,
           laplacianVariance: widget.laplacianVariance,
+          capturedImageFile: widget.capturedImageFile,
         ),
       ),
     );
@@ -139,7 +142,7 @@ class _ProcessingScreenState extends State<ProcessingScreen> {
         child: Column(
           children: [
             const GovHeaderBanner(
-              titleText: "NARCOTICS CONTROL BUREAU",
+              titleText: "MINISTRY OF HOME AFFAIRS",
               subtitleText: "STEP 4 OF 6: FORENSIC ISOLATE COLORIMETRY",
             ),
             Expanded(

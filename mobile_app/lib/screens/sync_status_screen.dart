@@ -84,7 +84,7 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
         child: Column(
           children: [
             const GovHeaderBanner(
-              titleText: "NARCOTICS CONTROL BUREAU",
+              titleText: "MINISTRY OF HOME AFFAIRS",
               subtitleText: "DATA TRANSMISSION REPOSITORY • 3-TIER RESILIENCE",
             ),
             Expanded(

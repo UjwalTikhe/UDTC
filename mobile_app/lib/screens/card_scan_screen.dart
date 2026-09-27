@@ -5,7 +5,7 @@ import '../models/domain_models.dart';
 import 'reaction_timer_screen.dart';
 
 /// Screen 5: Reference Card QR Scan Screen
-/// Validates genuine NCB Reference Card issuance via 3-frame debounced QR reading.
+/// Validates genuine MHA Reference Card issuance via 3-frame debounced QR reading.
 class CardScanScreen extends StatefulWidget {
   final User currentUser;
   final KitType selectedKit;
@@ -71,12 +71,12 @@ class _CardScanScreenState extends State<CardScanScreen> {
   }
 
   void _validateAndProceed(String payload) {
-    // Validate format: must start with "NCBCARD-"
-    if (!payload.startsWith("NCBCARD-")) {
+    // Validate format: must start with "MHACARD-" or "NCBCARD-"
+    if (!payload.startsWith("MHACARD-") && !payload.startsWith("NCBCARD-")) {
       setState(() {
         _isScanning = true;
         _consecutiveReads = 0;
-        _scanStatus = "INVALID CARD FORMAT: Must contain official 'NCBCARD-' prefix.";
+        _scanStatus = "INVALID CARD FORMAT: Must contain official 'MHACARD-' prefix.";
       });
       return;
     }
@@ -124,7 +124,7 @@ class _CardScanScreenState extends State<CardScanScreen> {
         child: Column(
           children: [
             const GovHeaderBanner(
-              titleText: "NARCOTICS CONTROL BUREAU",
+              titleText: "MINISTRY OF HOME AFFAIRS",
               subtitleText: "STEP 2 OF 6: CARD ISSUANCE AUTHENTICATION",
             ),
             Expanded(

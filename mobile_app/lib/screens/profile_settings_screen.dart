@@ -117,7 +117,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
         child: Column(
           children: [
             const GovHeaderBanner(
-              titleText: "NARCOTICS CONTROL BUREAU",
+              titleText: "MINISTRY OF HOME AFFAIRS",
               subtitleText: "OPERATIONAL CREDENTIALS • HARDWARE ATTESTATION",
             ),
             Expanded(
@@ -152,12 +152,16 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    widget.currentUser.badgeNumber,
+                                    widget.currentUser.name,
                                     style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
                                   ),
                                   const SizedBox(height: 2),
                                   Text(
-                                    "Role: ${widget.currentUser.role.name.toUpperCase()} • ${widget.currentUser.department}",
+                                    "${widget.currentUser.badgeNumber} • ${widget.currentUser.role.name.toUpperCase()}",
+                                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: GovTheme.ashokaNavy),
+                                  ),
+                                  Text(
+                                    widget.currentUser.department,
                                     style: GovTheme.caption,
                                   ),
                                 ],
@@ -168,9 +172,13 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                         const SizedBox(height: 12),
                         const Divider(height: 1),
                         const SizedBox(height: 12),
+                        _buildRow("Official Email", widget.currentUser.email),
+                        _buildRow("Badge / Service No.", widget.currentUser.badgeNumber),
+                        _buildRow("Age & Gender", "${widget.currentUser.age} yrs • ${widget.currentUser.gender}"),
+                        _buildRow("Posting City", widget.currentUser.city),
                         _buildRow("User ID", widget.currentUser.userId),
                         _buildRow("Bound Device ID", widget.currentUser.deviceId),
-                        _buildRow("Active Reference Card", "NCBCARD-2026-DEL-0491"),
+                        _buildRow("Active Reference Card", "MHACARD-2026-DEL-0491"),
                         _buildRow("Keystore Algorithm", "ECDSA P-256 (Hardware Secure Enclave)"),
                       ],
                     ),

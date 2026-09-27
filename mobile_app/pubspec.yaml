@@ -17,6 +17,8 @@ dependencies:
   http: ^1.2.0
   intl: ^0.19.0
   flutter_secure_storage: ^9.0.0
+  permission_handler: ^11.3.1
+  path_provider: ^2.1.6
 
 dev_dependencies:
   flutter_test:
@@ -27,6 +29,7 @@ flutter:
   uses-material-design: true
   assets:
     - assets/app_logo.png
+    - assets/mha_emblem.png
     - assets/reference_card_print.png
     - assets/field_sample_positive.png
     - assets/field_sample_negative.png

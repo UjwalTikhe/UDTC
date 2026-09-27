@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme/gov_theme.dart';
 import '../models/record_model.dart';
-import '../services/local_ledger_database.dart';
+import '../repositories/field_record_repository.dart';
 import 'record_detail_screen.dart';
 
 /// Screen 11: Seizure Test History & Hash-Chain Verification
@@ -14,7 +14,7 @@ class HistoryScreen extends StatefulWidget {
 }
 
 class _HistoryScreenState extends State<HistoryScreen> {
-  final LocalLedgerDatabase _db = LocalLedgerDatabase.instance;
+  final IFieldRecordRepository _recordRepo = FieldRecordRepository.instance;
   List<LocalRecordModel> _records = [];
   bool _isLoading = true;
   String _filter = "ALL"; // 'ALL', 'POSITIVE', 'NEGATIVE', 'PENDING_SYNC'
@@ -34,7 +34,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   Future<void> _loadHistory() async {
     setState(() => _isLoading = true);
-    final list = await _db.getAllRecords(latestFirst: true);
+    final list = await _recordRepo.getAllRecords();
     setState(() {
       _records = list;
       _isLoading = false;
@@ -42,7 +42,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   void _verifyLedgerIntegrity() async {
-    final report = await _db.verifyChainIntegrity();
+    final report = await _recordRepo.verifyChainIntegrity();
 
     if (!mounted) return;
 
@@ -141,7 +141,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
         child: Column(
           children: [
             const GovHeaderBanner(
-              titleText: "NARCOTICS CONTROL BUREAU",
+              titleText: "MINISTRY OF HOME AFFAIRS",
               subtitleText: "STATUTORY RECORD REPOSITORY • NDPS §52A LEDGER",
             ),
             // Search Bar & Filter Chips
@@ -284,15 +284,33 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                     ),
                                     const SizedBox(height: 6),
                                     Text(
-                                      r.classification,
-                                      style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold),
+                                      r.simpleDrugName,
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                        color: GovTheme.textPrimary,
+                                      ),
                                     ),
                                     const SizedBox(height: 4),
+                                    Text(
+                                      "${r.simpleKitDescription} • ${r.simpleMatchAccuracy}",
+                                      style: GovTheme.caption,
+                                    ),
+                                    const SizedBox(height: 6),
                                     Row(
                                       children: [
-                                        Text(
-                                          "Kit: ${r.kitType} • ΔE: ${r.deltaE2000.toStringAsFixed(2)} • Card: ${r.cardSerial}",
-                                          style: GovTheme.caption,
+                                        const Icon(Icons.access_time, size: 12, color: GovTheme.textSecondary),
+                                        const SizedBox(width: 4),
+                                        Text(r.formattedDate, style: GovTheme.caption),
+                                        const SizedBox(width: 10),
+                                        const Icon(Icons.place, size: 12, color: GovTheme.textSecondary),
+                                        const SizedBox(width: 4),
+                                        Expanded(
+                                          child: Text(
+                                            r.simpleLocation,
+                                            style: GovTheme.caption,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
                                         ),
                                       ],
                                     ),
@@ -300,13 +318,19 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                     Row(
                                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                       children: [
-                                        Text(
-                                          "SHA: ${r.recordHash.substring(0, 16)}...",
-                                          style: const TextStyle(
-                                            fontSize: 11,
-                                            fontFamily: 'monospace',
-                                            color: GovTheme.textSecondary,
-                                          ),
+                                        Row(
+                                          children: [
+                                            const Icon(Icons.verified_user, size: 13, color: GovTheme.alertNegativeText),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              r.simpleIntegrityStatus,
+                                              style: const TextStyle(
+                                                fontSize: 10.5,
+                                                fontWeight: FontWeight.w600,
+                                                color: GovTheme.alertNegativeText,
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                         Row(
                                           children: [
@@ -319,10 +343,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                             ),
                                             const SizedBox(width: 4),
                                             Text(
-                                              r.isStage1Synced == 1 ? "Synced" : "Local Only",
+                                              r.simpleSyncStatus,
                                               style: TextStyle(
                                                 fontSize: 11,
-                                                fontWeight: FontWeight.bold,
+                                                fontWeight: FontWeight.w600,
                                                 color: r.isStage1Synced == 1
                                                     ? GovTheme.alertNegativeText
                                                     : GovTheme.textSecondary,

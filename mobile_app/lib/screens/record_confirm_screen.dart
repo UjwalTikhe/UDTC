@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import '../theme/gov_theme.dart';
 import '../models/domain_models.dart';
@@ -22,6 +23,7 @@ class RecordConfirmScreen extends StatefulWidget {
   final GeoPoint? location;
   final bool locationConfirmed;
   final double laplacianVariance;
+  final File? capturedImageFile;
 
   const RecordConfirmScreen({
     super.key,
@@ -36,6 +38,7 @@ class RecordConfirmScreen extends StatefulWidget {
     this.location,
     required this.locationConfirmed,
     required this.laplacianVariance,
+    this.capturedImageFile,
   });
 
   @override
@@ -130,7 +133,7 @@ class _RecordConfirmScreenState extends State<RecordConfirmScreen> {
       try {
         final smsPayload = record.toGsmSmsPayload();
         await SmsAnchorService.instance.sendSmsAnchor(
-          destinationPhone: "+911124698282", // NCB National Central Bureau Gateway
+          destinationPhone: "+911124698282", // MHA National Central Gateway
           smsMessage: smsPayload,
         );
       } catch (_) {
@@ -146,7 +149,10 @@ class _RecordConfirmScreenState extends State<RecordConfirmScreen> {
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(
-          builder: (_) => RecordDetailScreen(record: record),
+          builder: (_) => RecordDetailScreen(
+            record: record,
+            capturedImageFile: widget.capturedImageFile,
+          ),
         ),
         (route) => route.isFirst,
       );
@@ -171,7 +177,7 @@ class _RecordConfirmScreenState extends State<RecordConfirmScreen> {
         child: Column(
           children: [
             const GovHeaderBanner(
-              titleText: "NARCOTICS CONTROL BUREAU",
+              titleText: "MINISTRY OF HOME AFFAIRS",
               subtitleText: "STEP 6 OF 6: STATUTORY NDPS §52A INVENTORY & DUAL-SIGN",
             ),
             Expanded(

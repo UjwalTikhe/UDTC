@@ -5,6 +5,7 @@ import '../models/record_model.dart';
 import '../services/local_ledger_database.dart';
 import '../services/staged_sync_service.dart';
 import '../services/crypto_signer_service.dart';
+import '../repositories/field_record_repository.dart';
 import 'kit_selection_screen.dart';
 import 'history_screen.dart';
 import 'record_detail_screen.dart';
@@ -24,6 +25,7 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   final LocalLedgerDatabase _db = LocalLedgerDatabase.instance;
+  final IFieldRecordRepository _recordRepo = FieldRecordRepository.instance;
   final StagedSyncService _syncService = StagedSyncService.instance;
   final CryptoSignerService _signer = CryptoSignerService.instance;
 
@@ -40,10 +42,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _user = widget.currentUser ??
         User(
           userId: "OFFICER-7841",
-          badgeNumber: "NCB-NZ-7841",
-          department: "Narcotics Control Bureau (Operations)",
+          badgeNumber: "MHA-NZ-7841",
+          department: "Ministry of Home Affairs (Operations)",
           role: Role.officer,
-          deviceId: "NCB-SECURE-DEV-001",
+          deviceId: "MHA-SECURE-DEV-001",
           provisionedAt: DateTime.now().subtract(const Duration(days: 30)),
         );
     _initData();
@@ -57,9 +59,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _refreshDashboard() async {
-    final records = await _db.getAllRecords(latestFirst: true);
+    final records = await _recordRepo.getAllRecords();
     final topHash = await _db.getLastRecordHash();
-    final integrity = await _db.verifyChainIntegrity();
+    final integrity = await _recordRepo.verifyChainIntegrity();
 
     setState(() {
       _recentRecords = records;
@@ -78,7 +80,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text("Sync complete: ${res['synced']}/${res['attempted']} anchored to NCB server."),
+        content: Text("Sync complete: ${res['synced']}/${res['attempted']} anchored to MHA server."),
         backgroundColor: GovTheme.primary,
       ),
     );
@@ -105,24 +107,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
         title: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(6),
+              padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(6),
+                color: Colors.white,
+                shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.shield, color: Colors.amberAccent, size: 20),
+              child: Image.asset(
+                'assets/mha_emblem.png',
+                height: 26,
+                fit: BoxFit.contain,
+                errorBuilder: (_, __, ___) => const Icon(Icons.shield, color: Colors.amberAccent, size: 20),
+              ),
             ),
             const SizedBox(width: 10),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  "NCB Field Companion",
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                Text(
+                  _user.name.isNotEmpty ? _user.name : "MHA Field Companion",
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                 ),
                 Text(
-                  _user.badgeNumber,
-                  style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.8)),
+                  "${_user.badgeNumber} • ${_user.role.name.toUpperCase()}",
+                  style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.85)),
                 ),
               ],
             ),
@@ -158,7 +165,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: Column(
           children: [
             const GovHeaderBanner(
-              titleText: "NARCOTICS CONTROL BUREAU",
+              titleText: "MINISTRY OF HOME AFFAIRS",
               subtitleText: "OPERATIONAL FIELD HEADQUARTERS • NDPS §52A APPARATUS",
             ),
             Expanded(
@@ -193,7 +200,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        _user.badgeNumber,
+                                        _user.name.isNotEmpty ? _user.name : _user.badgeNumber,
                                         style: const TextStyle(
                                           fontSize: 15,
                                           fontWeight: FontWeight.w900,
@@ -202,8 +209,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                       ),
                                       const SizedBox(height: 2),
                                       Text(
-                                        "Role: ${_user.role.name.toUpperCase()} • Apparatus DEV-001 Bound",
+                                        "${_user.rank} • Badge: ${_user.badgeNumber}",
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                          color: GovTheme.textPrimary,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 1),
+                                      Text(
+                                        "${_user.unit} • ${_user.city}",
                                         style: GovTheme.caption,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
                                       ),
                                     ],
                                   ),
@@ -211,17 +229,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                   decoration: BoxDecoration(
-                                    color: GovTheme.alertNegativeBg,
+                                    color: Colors.green.shade50,
                                     borderRadius: BorderRadius.circular(4),
-                                    border: Border.all(color: GovTheme.alertNegativeText),
+                                    border: Border.all(color: Colors.green.shade600),
                                   ),
-                                  child: const Text(
-                                    "ACTIVE",
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w900,
-                                      color: GovTheme.alertNegativeText,
-                                    ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.verified, size: 12, color: Colors.green.shade700),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        "VERIFIED",
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w900,
+                                          color: Colors.green.shade800,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ],
@@ -389,33 +414,112 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             const Center(child: Text("No records yet.", style: GovTheme.caption))
                           else
                             ..._recentRecords.take(4).map((r) {
-                              return Container(
-                                margin: const EdgeInsets.only(bottom: 8),
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: GovTheme.bgSurface,
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(color: GovTheme.borderDefault),
+                              return InkWell(
+                                onTap: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => RecordDetailScreen(record: r),
+                                  ),
                                 ),
-                                child: ListTile(
-                                  contentPadding: EdgeInsets.zero,
-                                  title: Text(
-                                    r.testId,
-                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                borderRadius: BorderRadius.circular(8),
+                                child: Container(
+                                  margin: const EdgeInsets.only(bottom: 10),
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: GovTheme.bgSurface,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: GovTheme.borderDefault),
                                   ),
-                                  subtitle: Text(
-                                    "${r.kitType} • ΔE: ${r.deltaE2000.toStringAsFixed(1)} • ${r.cardSerial}",
-                                    style: GovTheme.caption,
-                                  ),
-                                  trailing: GovResultBadge(
-                                    classification: r.classification,
-                                    confidence: r.confidence,
-                                  ),
-                                  onTap: () => Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => RecordDetailScreen(record: r),
-                                    ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(
+                                            r.testId,
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.w900,
+                                              fontSize: 13,
+                                              color: GovTheme.ashokaNavy,
+                                            ),
+                                          ),
+                                          GovResultBadge(
+                                            classification: r.classification,
+                                            confidence: r.confidence,
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        r.simpleDrugName,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14,
+                                          color: GovTheme.textPrimary,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Row(
+                                        children: [
+                                          const Icon(Icons.access_time, size: 13, color: GovTheme.textSecondary),
+                                          const SizedBox(width: 4),
+                                          Text(r.formattedDate, style: GovTheme.caption),
+                                          const SizedBox(width: 12),
+                                          const Icon(Icons.place, size: 13, color: GovTheme.textSecondary),
+                                          const SizedBox(width: 4),
+                                          Expanded(
+                                            child: Text(
+                                              r.simpleLocation,
+                                              style: GovTheme.caption,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              const Icon(Icons.verified_user, size: 13, color: GovTheme.alertNegativeText),
+                                              const SizedBox(width: 4),
+                                              Text(
+                                                r.simpleIntegrityStatus,
+                                                style: const TextStyle(
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: GovTheme.alertNegativeText,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          Row(
+                                            children: [
+                                              Icon(
+                                                r.isStage1Synced == 1 ? Icons.cloud_done : Icons.cloud_queue,
+                                                size: 14,
+                                                color: r.isStage1Synced == 1
+                                                    ? GovTheme.alertNegativeText
+                                                    : GovTheme.textSecondary,
+                                              ),
+                                              const SizedBox(width: 4),
+                                              Text(
+                                                r.simpleSyncStatus,
+                                                style: TextStyle(
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: r.isStage1Synced == 1
+                                                      ? GovTheme.alertNegativeText
+                                                      : GovTheme.textSecondary,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ],
                                   ),
                                 ),
                               );

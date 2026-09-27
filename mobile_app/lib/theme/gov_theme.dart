@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Government of India / Narcotics Control Bureau (NCB) Design System
+/// Government of India / Ministry of Home Affairs (NCB) Design System
 /// Compliant with GIGW 3.0 (Guidelines for Indian Government Websites & Apps)
 /// and WCAG 2.1 Level AA (Minimum 4.5:1 text contrast).
 class GovTheme {
@@ -30,6 +30,7 @@ class GovTheme {
   // Negative = No Contraband Detected (Clear state) -> High contrast Green
   static const Color alertNegativeBg = Color(0xFFE8F5E9);
   static const Color alertNegativeText = Color(0xFF1B6E2F); // 5.62:1 contrast
+  static const Color statusSuccess = Color(0xFF1B6E2F); // Official success emerald
 
   // Inconclusive = Degraded/Unconfirmed (Lab/Retest needed) -> High contrast Amber
   static const Color alertInconclusiveBg = Color(0xFFFFF4E0);
@@ -167,7 +168,7 @@ class GovTricolorBar extends StatelessWidget {
   }
 }
 
-/// Official Government & Narcotics Control Bureau Top Header Banner
+/// Official Government & Ministry of Home Affairs Top Header Banner
 class GovHeaderBanner extends StatelessWidget {
   final String titleText;
   final String subtitleText;
@@ -175,7 +176,7 @@ class GovHeaderBanner extends StatelessWidget {
 
   const GovHeaderBanner({
     super.key,
-    this.titleText = "NARCOTICS CONTROL BUREAU",
+    this.titleText = "MINISTRY OF HOME AFFAIRS",
     this.subtitleText = "MINISTRY OF HOME AFFAIRS • GOVT OF INDIA",
     this.badgeText = "NDPS §52A / BSA §63 SECURE APPARATUS",
   });
@@ -193,13 +194,19 @@ class GovHeaderBanner extends StatelessWidget {
                 Container(
                   width: 44,
                   height: 44,
+                  padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.12),
+                    color: Colors.white,
                     shape: BoxShape.circle,
-                    border: Border.all(color: Colors.amberAccent.withOpacity(0.8), width: 1.5),
+                    border: Border.all(color: Colors.amberAccent, width: 1.5),
                   ),
-                  child: const Center(
-                    child: Icon(Icons.shield, color: Colors.amberAccent, size: 26),
+                  child: Image.asset(
+                    'assets/mha_emblem.png',
+                    height: 32,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, __, ___) => const Center(
+                      child: Icon(Icons.shield, color: Colors.amberAccent, size: 24),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),

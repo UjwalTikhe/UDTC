@@ -37,7 +37,7 @@ class FieldDrugTestingApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'NCB Field Drug Testing Companion',
+      title: 'MHA Field Drug Testing Companion',
       debugShowCheckedModeBanner: false,
       theme: GovTheme.lightTheme,
       home: const SplashScreen(),

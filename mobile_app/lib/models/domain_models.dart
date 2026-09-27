@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'package:crypto/crypto.dart';
 
 /// SIH26231 — Domain Model Specification (Section 2)
 /// Flat composition models for field drug testing compliance
@@ -8,39 +7,137 @@ enum Role { officer, supervisor, auditor, admin }
 
 class User {
   final String userId;
+  final String name;
+  final String email;
   final String badgeNumber;
+  final int age;
+  final String gender;
+  final String city;
   final String department;
   final Role role;
   final String deviceId; // bound hardware device
   final DateTime provisionedAt;
+  final String rank;
+  final String unit;
+  final bool isVerified;
+  final String? serviceId;
 
   User({
     required this.userId,
+    this.name = "Officer",
+    this.email = "officer@mha.gov.in",
     required this.badgeNumber,
-    required this.department,
+    this.age = 30,
+    this.gender = "Male",
+    this.city = "New Delhi",
+    this.department = "Ministry of Home Affairs • Forensic Operations Division",
     required this.role,
-    required this.deviceId,
+    this.deviceId = "MHA-SECURE-DEV-001",
     required this.provisionedAt,
+    this.rank = "Police Sub-Inspector (PSI)",
+    this.unit = "Special Task Force (Anti-Narcotics Unit)",
+    this.isVerified = true,
+    this.serviceId,
   });
 
   Map<String, dynamic> toMap() => {
     'userId': userId,
+    'name': name,
+    'email': email,
     'badgeNumber': badgeNumber,
+    'age': age,
+    'gender': gender,
+    'city': city,
     'department': department,
     'role': role.name,
     'deviceId': deviceId,
     'provisionedAt': provisionedAt.toIso8601String(),
+    'rank': rank,
+    'unit': unit,
+    'isVerified': isVerified,
+    'serviceId': serviceId,
   };
 
   factory User.fromMap(Map<String, dynamic> map) => User(
-    userId: map['userId'] as String? ?? 'OFFICER-DEFAULT',
-    badgeNumber: map['badgeNumber'] as String? ?? 'NCB-DEL-7841',
-    department: map['department'] as String? ?? 'Narcotics Control Bureau - Northern Zone',
+    userId: map['userId'] as String? ?? 'MHA-DEFAULT',
+    name: map['name'] as String? ?? 'Officer',
+    email: map['email'] as String? ?? 'officer@mha.gov.in',
+    badgeNumber: map['badgeNumber'] as String? ?? 'MHA-NZ-7841',
+    age: (map['age'] as num?)?.toInt() ?? 30,
+    gender: map['gender'] as String? ?? 'Male',
+    city: map['city'] as String? ?? 'New Delhi',
+    department: map['department'] as String? ?? 'Ministry of Home Affairs • Forensic Operations Division',
     role: Role.values.firstWhere((e) => e.name == map['role'], orElse: () => Role.officer),
-    deviceId: map['deviceId'] as String? ?? 'NCB-SECURE-DEV-001',
+    deviceId: map['deviceId'] as String? ?? 'MHA-SECURE-DEV-001',
     provisionedAt: map['provisionedAt'] != null 
         ? DateTime.parse(map['provisionedAt'] as String) 
         : DateTime.now(),
+    rank: map['rank'] as String? ?? 'Police Sub-Inspector (PSI)',
+    unit: map['unit'] as String? ?? 'Special Task Force (Anti-Narcotics Unit)',
+    isVerified: map['isVerified'] as bool? ?? true,
+    serviceId: map['serviceId'] as String?,
+  );
+}
+
+/// Official Department Registry Entry for Law Enforcement Personnel
+/// Pre-seeded or provisioned by Ministry of Home Affairs Admin
+class DepartmentOfficer {
+  final String serviceId;
+  final String badgeNumber;
+  final String name;
+  final String rank;
+  final String unit;
+  final String city;
+  final String registeredPhone;
+  final String registeredEmail;
+  final Role role;
+  final String credentialSig;
+  final bool isActivated;
+  final String? deviceId;
+
+  const DepartmentOfficer({
+    required this.serviceId,
+    required this.badgeNumber,
+    required this.name,
+    required this.rank,
+    required this.unit,
+    required this.city,
+    required this.registeredPhone,
+    required this.registeredEmail,
+    required this.role,
+    required this.credentialSig,
+    this.isActivated = false,
+    this.deviceId,
+  });
+
+  Map<String, dynamic> toMap() => {
+    'service_id': serviceId,
+    'badge_number': badgeNumber,
+    'name': name,
+    'rank': rank,
+    'unit': unit,
+    'city': city,
+    'registered_phone': registeredPhone,
+    'registered_email': registeredEmail,
+    'role': role.name,
+    'credential_sig': credentialSig,
+    'is_activated': isActivated ? 1 : 0,
+    'device_id': deviceId,
+  };
+
+  factory DepartmentOfficer.fromMap(Map<String, dynamic> map) => DepartmentOfficer(
+    serviceId: map['service_id'] as String,
+    badgeNumber: map['badge_number'] as String,
+    name: map['name'] as String,
+    rank: map['rank'] as String,
+    unit: map['unit'] as String,
+    city: map['city'] as String,
+    registeredPhone: map['registered_phone'] as String,
+    registeredEmail: map['registered_email'] as String,
+    role: Role.values.firstWhere((e) => e.name == map['role'], orElse: () => Role.officer),
+    credentialSig: map['credential_sig'] as String? ?? 'SIG-MHA-VALID',
+    isActivated: (map['is_activated'] as num?)?.toInt() == 1,
+    deviceId: map['device_id'] as String?,
   );
 }
 

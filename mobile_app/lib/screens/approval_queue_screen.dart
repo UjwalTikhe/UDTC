@@ -97,7 +97,7 @@ class _ApprovalQueueScreenState extends State<ApprovalQueueScreen> {
         child: Column(
           children: [
             const GovHeaderBanner(
-              titleText: "NARCOTICS CONTROL BUREAU",
+              titleText: "MINISTRY OF HOME AFFAIRS",
               subtitleText: "SUPERVISORY AUDIT & DUAL-SIGN DISPATCH WING",
             ),
             Expanded(

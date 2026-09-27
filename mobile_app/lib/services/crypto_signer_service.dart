@@ -26,7 +26,7 @@ class CryptoSignerService {
   // Persistent simulated Android Keystore StrongBox ECDSA P-256 key pair
   ECPrivateKey? _devicePrivateKey;
   ECPublicKey? _devicePublicKey;
-  String _deviceKeyFingerprint = "KEYSTORE-P256-NCB-DEV-042";
+  String _deviceKeyFingerprint = "KEYSTORE-P256-MHA-DEV-042";
   String? _derivedOfficerPin;
   String _currentOfficerId = "OFFICER-7841";
 
@@ -96,7 +96,7 @@ class CryptoSignerService {
   }) {
     // 1. Derive 256-bit officer key using PBKDF2 (10,000 iterations)
     final pbkdf2 = KeyDerivator('SHA-256/HMAC/PBKDF2');
-    final salt = utf8.encode("NCB-SALT-LEGAL:$officerId");
+    final salt = utf8.encode("MHA-SALT-LEGAL:$officerId");
     final params = Pbkdf2Parameters(Uint8List.fromList(salt), 10000, 32);
     pbkdf2.init(params);
 

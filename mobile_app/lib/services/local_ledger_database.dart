@@ -1,7 +1,10 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
+import 'package:crypto/crypto.dart';
 import '../models/record_model.dart';
+import '../models/domain_models.dart';
 import 'crypto_signer_service.dart';
 
 class LedgerIntegrityReport {
@@ -32,7 +35,7 @@ class LocalLedgerDatabase {
 
   Future<Database> get database async {
     if (_database != null) return _database!;
-    _database = await _initDB('ncb_field_ledger.db');
+    _database = await _initDB('mha_field_ledger.db');
     return _database!;
   }
 
@@ -42,7 +45,7 @@ class LocalLedgerDatabase {
 
     return await openDatabase(
       path,
-      version: 2,
+      version: 4,
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
     );
@@ -77,6 +80,43 @@ class LocalLedgerDatabase {
         is_sms_witnessed INTEGER DEFAULT 0
       )
     ''');
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id TEXT NOT NULL UNIQUE,
+        name TEXT NOT NULL,
+        email TEXT NOT NULL UNIQUE,
+        badge_number TEXT NOT NULL UNIQUE,
+        age INTEGER NOT NULL,
+        gender TEXT NOT NULL,
+        city TEXT NOT NULL,
+        role TEXT NOT NULL,
+        department TEXT NOT NULL,
+        password_hash TEXT NOT NULL,
+        password_salt TEXT NOT NULL,
+        device_id TEXT NOT NULL,
+        created_at REAL NOT NULL
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS department_registry (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        service_id TEXT NOT NULL UNIQUE,
+        badge_number TEXT NOT NULL UNIQUE,
+        name TEXT NOT NULL,
+        rank TEXT NOT NULL,
+        unit TEXT NOT NULL,
+        city TEXT NOT NULL,
+        registered_phone TEXT NOT NULL,
+        registered_email TEXT NOT NULL,
+        role TEXT NOT NULL,
+        credential_sig TEXT NOT NULL,
+        is_activated INTEGER DEFAULT 0,
+        device_id TEXT
+      )
+    ''');
   }
 
   Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -86,6 +126,45 @@ class LocalLedgerDatabase {
       await db.execute('ALTER TABLE chain_ledger ADD COLUMN reagent_window_ok INTEGER DEFAULT 1');
       await db.execute('ALTER TABLE chain_ledger ADD COLUMN reaction_time_seconds INTEGER DEFAULT 30');
       await db.execute('ALTER TABLE chain_ledger ADD COLUMN is_sms_witnessed INTEGER DEFAULT 0');
+    }
+    if (oldVersion < 3) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id TEXT NOT NULL UNIQUE,
+          name TEXT NOT NULL,
+          email TEXT NOT NULL UNIQUE,
+          badge_number TEXT NOT NULL UNIQUE,
+          age INTEGER NOT NULL,
+          gender TEXT NOT NULL,
+          city TEXT NOT NULL,
+          role TEXT NOT NULL,
+          department TEXT NOT NULL,
+          password_hash TEXT NOT NULL,
+          password_salt TEXT NOT NULL,
+          device_id TEXT NOT NULL,
+          created_at REAL NOT NULL
+        )
+      ''');
+    }
+    if (oldVersion < 4) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS department_registry (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          service_id TEXT NOT NULL UNIQUE,
+          badge_number TEXT NOT NULL UNIQUE,
+          name TEXT NOT NULL,
+          rank TEXT NOT NULL,
+          unit TEXT NOT NULL,
+          city TEXT NOT NULL,
+          registered_phone TEXT NOT NULL,
+          registered_email TEXT NOT NULL,
+          role TEXT NOT NULL,
+          credential_sig TEXT NOT NULL,
+          is_activated INTEGER DEFAULT 0,
+          device_id TEXT
+        )
+      ''');
     }
   }
 
@@ -354,5 +433,369 @@ class LocalLedgerDatabase {
       isSmsWitnessed: 1,
     );
     await insertRecord(record2);
+  }
+
+  // ==========================================
+  // USER AUTHENTICATION & CREDENTIAL DATABASE
+  // Ministry of Home Affairs Secure Sign-Up / Sign-In
+  // ==========================================
+
+  static String hashPassword(String password, String salt) {
+    final bytes = utf8.encode('$salt:$password:MHA_GOV_SECURE_SALT_2026');
+    return sha256.convert(bytes).toString();
+  }
+
+  Future<void> seedDefaultUsersIfEmpty() async {
+    final db = await instance.database;
+    final res = await db.query('users', limit: 1);
+    if (res.isEmpty) {
+      // Seed Ujwal Tikhe (PSI)
+      await registerUser(
+        name: "Ujwal Tikhe",
+        email: "ujwal.tikhe@mha.gov.in",
+        badgeNumber: "MH-8842",
+        age: 28,
+        gender: "Male",
+        city: "Mumbai",
+        role: Role.officer,
+        password: "Officer@123",
+        department: "Ministry of Home Affairs • Special Task Force",
+        deviceId: "MHA-SECURE-DEV-001",
+      );
+
+      // Seed Rajesh Kumar (ASI)
+      await registerUser(
+        name: "Rajesh Kumar",
+        email: "officer@mha.gov.in",
+        badgeNumber: "MHA-NZ-7841",
+        age: 34,
+        gender: "Male",
+        city: "New Delhi",
+        role: Role.officer,
+        password: "Officer@123",
+        department: "Ministry of Home Affairs • Forensic Operations Division",
+        deviceId: "MHA-SECURE-DEV-001",
+      );
+
+      // Seed Amitabh Sharma (SP)
+      await registerUser(
+        name: "Amitabh Sharma",
+        email: "supervisor@mha.gov.in",
+        badgeNumber: "MH-1002",
+        age: 48,
+        gender: "Male",
+        city: "New Delhi",
+        role: Role.supervisor,
+        password: "Supervisor@123",
+        department: "Ministry of Home Affairs • Forensic Directorate",
+        deviceId: "MHA-SECURE-DEV-001",
+      );
+    }
+
+    // Always seed department registry as well
+    await seedDepartmentRegistryIfEmpty();
+  }
+
+  Future<void> seedDepartmentRegistryIfEmpty() async {
+    final db = await instance.database;
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS department_registry (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        service_id TEXT NOT NULL UNIQUE,
+        badge_number TEXT NOT NULL UNIQUE,
+        name TEXT NOT NULL,
+        rank TEXT NOT NULL,
+        unit TEXT NOT NULL,
+        city TEXT NOT NULL,
+        registered_phone TEXT NOT NULL,
+        registered_email TEXT NOT NULL,
+        role TEXT NOT NULL,
+        credential_sig TEXT NOT NULL,
+        is_activated INTEGER DEFAULT 0,
+        device_id TEXT
+      )
+    ''');
+
+    final count = Sqflite.firstIntValue(
+      await db.rawQuery('SELECT COUNT(*) FROM department_registry'),
+    ) ?? 0;
+
+    if (count > 0) return;
+
+    final officers = [
+      const DepartmentOfficer(
+        serviceId: "MH-PSI-2026-081",
+        badgeNumber: "MH-8842",
+        name: "Ujwal Tikhe",
+        rank: "Police Sub-Inspector (PSI)",
+        unit: "Special Task Force (Anti-Narcotics Unit)",
+        city: "Mumbai",
+        registeredPhone: "+91 98765 43210",
+        registeredEmail: "ujwal.tikhe@mha.gov.in",
+        role: Role.officer,
+        credentialSig: "MHA-PKI-ECDSA-P256:7D88B923A0F11C84",
+        isActivated: true,
+        deviceId: "MHA-SECURE-DEV-001",
+      ),
+      const DepartmentOfficer(
+        serviceId: "MHA-SP-2026-004",
+        badgeNumber: "MH-1002",
+        name: "Amitabh Sharma",
+        rank: "Superintendent of Police (SP)",
+        unit: "Zonal Forensic Directorate",
+        city: "New Delhi",
+        registeredPhone: "+91 98110 98765",
+        registeredEmail: "amitabh.sharma@mha.gov.in",
+        role: Role.supervisor,
+        credentialSig: "MHA-PKI-ECDSA-P256:4C29E711DF92003B",
+        isActivated: true,
+        deviceId: "MHA-SECURE-DEV-001",
+      ),
+      const DepartmentOfficer(
+        serviceId: "MHA-SO-2026-7841",
+        badgeNumber: "MHA-NZ-7841",
+        name: "Rajesh Kumar",
+        rank: "Assistant Sub-Inspector (ASI)",
+        unit: "Northern Zone Field Unit",
+        city: "New Delhi",
+        registeredPhone: "+91 98990 12345",
+        registeredEmail: "officer@mha.gov.in",
+        role: Role.officer,
+        credentialSig: "MHA-PKI-ECDSA-P256:91AE3F08B764512A",
+        isActivated: true,
+        deviceId: "MHA-SECURE-DEV-001",
+      ),
+    ];
+
+    for (final off in officers) {
+      await db.insert(
+        'department_registry',
+        off.toMap(),
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    }
+  }
+
+  Future<DepartmentOfficer?> lookupDepartmentRegistry(String query) async {
+    final db = await instance.database;
+    final clean = query.trim().toUpperCase();
+    if (clean.isEmpty) return null;
+
+    await seedDepartmentRegistryIfEmpty();
+
+    final results = await db.query(
+      'department_registry',
+      where: 'UPPER(badge_number) = ? OR UPPER(service_id) = ?',
+      whereArgs: [clean, clean],
+      limit: 1,
+    );
+
+    if (results.isEmpty) return null;
+    return DepartmentOfficer.fromMap(results.first);
+  }
+
+  Future<User> provisionOfficerFromRegistry(
+    DepartmentOfficer officer, {
+    String? password,
+    String? deviceId,
+  }) async {
+    final db = await instance.database;
+    final devId = deviceId ?? "MHA-SECURE-DEV-001";
+    final effectivePass = password ?? "Officer@123";
+
+    final existing = await db.query(
+      'users',
+      where: 'LOWER(email) = ? OR UPPER(badge_number) = ?',
+      whereArgs: [officer.registeredEmail.toLowerCase(), officer.badgeNumber.toUpperCase()],
+      limit: 1,
+    );
+
+    if (existing.isEmpty) {
+      final salt = "${DateTime.now().millisecondsSinceEpoch}_${officer.registeredEmail.hashCode}";
+      final passHash = hashPassword(effectivePass, salt);
+      final userId = "MHA-${officer.badgeNumber.replaceAll(RegExp(r'[^A-Za-z0-9]'), '')}";
+      final nowUtc = DateTime.now().millisecondsSinceEpoch / 1000.0;
+
+      await db.insert(
+        'users',
+        {
+          'user_id': userId,
+          'name': officer.name,
+          'email': officer.registeredEmail.toLowerCase(),
+          'badge_number': officer.badgeNumber.toUpperCase(),
+          'age': 32,
+          'gender': 'Male',
+          'city': officer.city,
+          'role': officer.role.name,
+          'department': "${officer.unit} • Ministry of Home Affairs",
+          'password_hash': passHash,
+          'password_salt': salt,
+          'device_id': devId,
+          'created_at': nowUtc,
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    }
+
+    return User(
+      userId: "MHA-${officer.badgeNumber.replaceAll(RegExp(r'[^A-Za-z0-9]'), '')}",
+      name: officer.name,
+      email: officer.registeredEmail,
+      badgeNumber: officer.badgeNumber,
+      age: 32,
+      gender: "Male",
+      city: officer.city,
+      department: "${officer.unit} • Ministry of Home Affairs",
+      role: officer.role,
+      deviceId: devId,
+      provisionedAt: DateTime.now(),
+      rank: officer.rank,
+      unit: officer.unit,
+      isVerified: true,
+      serviceId: officer.serviceId,
+    );
+  }
+
+  Future<User> registerUser({
+    required String name,
+    required String email,
+    required String badgeNumber,
+    required int age,
+    required String gender,
+    required String city,
+    required Role role,
+    required String password,
+    String? department,
+    String? deviceId,
+  }) async {
+    final db = await instance.database;
+    final cleanEmail = email.trim().toLowerCase();
+    final cleanBadge = badgeNumber.trim().toUpperCase();
+
+    // Check if already registered
+    final existing = await db.query(
+      'users',
+      where: 'LOWER(email) = ? OR UPPER(badge_number) = ?',
+      whereArgs: [cleanEmail, cleanBadge],
+    );
+    if (existing.isNotEmpty) {
+      if (existing.first['email'] == cleanEmail) {
+        throw Exception("An officer account with email '$cleanEmail' already exists.");
+      } else {
+        throw Exception("Badge number '$cleanBadge' is already registered.");
+      }
+    }
+
+    final salt = "${DateTime.now().millisecondsSinceEpoch}_${cleanEmail.hashCode}";
+    final passHash = hashPassword(password, salt);
+    final userId = "MHA-${cleanBadge.replaceAll(RegExp(r'[^A-Za-z0-9]'), '')}";
+    final dept = department ?? "Ministry of Home Affairs • Forensic Operations Division";
+    final devId = deviceId ?? "MHA-SECURE-DEV-001";
+    final nowUtc = DateTime.now().millisecondsSinceEpoch / 1000.0;
+
+    await db.insert(
+      'users',
+      {
+        'user_id': userId,
+        'name': name.trim(),
+        'email': cleanEmail,
+        'badge_number': cleanBadge,
+        'age': age,
+        'gender': gender,
+        'city': city.trim(),
+        'role': role.name,
+        'department': dept,
+        'password_hash': passHash,
+        'password_salt': salt,
+        'device_id': devId,
+        'created_at': nowUtc,
+      },
+      conflictAlgorithm: ConflictAlgorithm.abort,
+    );
+
+    return User(
+      userId: userId,
+      name: name.trim(),
+      email: cleanEmail,
+      badgeNumber: cleanBadge,
+      age: age,
+      gender: gender,
+      city: city.trim(),
+      department: dept,
+      role: role,
+      deviceId: devId,
+      provisionedAt: DateTime.now(),
+    );
+  }
+
+  Future<User?> authenticateUser({
+    required String email,
+    required String password,
+  }) async {
+    final db = await instance.database;
+    final cleanEmail = email.trim().toLowerCase();
+
+    final results = await db.query(
+      'users',
+      where: 'LOWER(email) = ?',
+      whereArgs: [cleanEmail],
+      limit: 1,
+    );
+
+    if (results.isEmpty) {
+      return null;
+    }
+
+    final row = results.first;
+    final storedHash = row['password_hash'] as String;
+    final salt = row['password_salt'] as String;
+
+    final computedHash = hashPassword(password, salt);
+    if (computedHash != storedHash) {
+      return null;
+    }
+
+    return User(
+      userId: row['user_id'] as String,
+      name: row['name'] as String,
+      email: row['email'] as String,
+      badgeNumber: row['badge_number'] as String,
+      age: (row['age'] as num).toInt(),
+      gender: row['gender'] as String,
+      city: row['city'] as String,
+      department: row['department'] as String,
+      role: Role.values.firstWhere((e) => e.name == row['role'], orElse: () => Role.officer),
+      deviceId: row['device_id'] as String,
+      provisionedAt: DateTime.fromMillisecondsSinceEpoch(((row['created_at'] as num) * 1000).toInt()),
+    );
+  }
+
+  Future<User?> getUserByEmail(String email) async {
+    final db = await instance.database;
+    final cleanEmail = email.trim().toLowerCase();
+
+    final results = await db.query(
+      'users',
+      where: 'LOWER(email) = ?',
+      whereArgs: [cleanEmail],
+      limit: 1,
+    );
+
+    if (results.isEmpty) return null;
+
+    final row = results.first;
+    return User(
+      userId: row['user_id'] as String,
+      name: row['name'] as String,
+      email: row['email'] as String,
+      badgeNumber: row['badge_number'] as String,
+      age: (row['age'] as num).toInt(),
+      gender: row['gender'] as String,
+      city: row['city'] as String,
+      department: row['department'] as String,
+      role: Role.values.firstWhere((e) => e.name == row['role'], orElse: () => Role.officer),
+      deviceId: row['device_id'] as String,
+      provisionedAt: DateTime.fromMillisecondsSinceEpoch(((row['created_at'] as num) * 1000).toInt()),
+    );
   }
 }

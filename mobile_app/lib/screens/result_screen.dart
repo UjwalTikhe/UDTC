@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import '../theme/gov_theme.dart';
 import '../models/domain_models.dart';
@@ -19,6 +20,7 @@ class ResultScreen extends StatelessWidget {
   final GeoPoint? location;
   final bool locationConfirmed;
   final double laplacianVariance;
+  final File? capturedImageFile;
 
   const ResultScreen({
     super.key,
@@ -33,6 +35,7 @@ class ResultScreen extends StatelessWidget {
     this.location,
     required this.locationConfirmed,
     required this.laplacianVariance,
+    this.capturedImageFile,
   });
 
   @override
@@ -68,7 +71,7 @@ class ResultScreen extends StatelessWidget {
         child: Column(
           children: [
             const GovHeaderBanner(
-              titleText: "NARCOTICS CONTROL BUREAU",
+              titleText: "MINISTRY OF HOME AFFAIRS",
               subtitleText: "STEP 5 OF 6: STATUTORY CLASSIFICATION OUTCOME",
             ),
             // Persistent Non-Dismissible Warning Banner
@@ -193,7 +196,53 @@ class ResultScreen extends StatelessWidget {
                     const SizedBox(height: GovTheme.space16),
                   ],
 
-                  // 3. Optical & Forensic Colorimeter Metrics Card
+                  // 2. Captured Watermarked Evidence Photo Preview
+                  if (capturedImageFile != null && capturedImageFile!.existsSync()) ...[
+                    Container(
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: Colors.black,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: GovTheme.ashokaNavy, width: 2),
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          AspectRatio(
+                            aspectRatio: 16 / 9,
+                            child: Image.file(
+                              capturedImageFile!,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                            color: GovTheme.ashokaNavy,
+                            child: Row(
+                              children: const [
+                                Icon(Icons.verified, color: Colors.amberAccent, size: 15),
+                                SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    "EVIDENCE PHOTO: Live GPS Coordinates & Officer Badge Stamped",
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: GovTheme.space16),
+                  ],
+
+                  // 3. Optical & Forensic Colorimeter Metrics Card (Simplified for Police Officers & Supervisors)
                   Container(
                     padding: const EdgeInsets.all(GovTheme.space16),
                     decoration: BoxDecoration(
@@ -205,7 +254,7 @@ class ResultScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          "OPTICAL CALIBRATION EVIDENCE",
+                          "FIELD TEST EVIDENCE & ACCURACY",
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w800,
@@ -214,20 +263,26 @@ class ResultScreen extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 12),
-                        _buildMetricRow("Assay Kit", selectedKit.displayName),
-                        _buildMetricRow("Reagent Lot", reagentBatch),
+                        _buildMetricRow("Substance Tested", selectedKit.targetSubstance),
+                        _buildMetricRow("Field Test Kit", selectedKit.displayName),
+                        _buildMetricRow("Reagent Lot No.", reagentBatch),
                         _buildMetricRow("Reference Card Serial", cardSerial),
-                        _buildMetricRow("CIEDE2000 ΔE Distance", "${deltaE.toStringAsFixed(2)} (Threshold: 8.5)"),
                         _buildMetricRow(
-                          "Measured CIE L*a*b*",
-                          "[L:${labValues[0].toStringAsFixed(1)}, a:${labValues[1].toStringAsFixed(1)}, b:${labValues[2].toStringAsFixed(1)}]",
+                          "Color Match Accuracy",
+                          "${classification.confidence.toStringAsFixed(1)}% Match (Variance ΔE: ${deltaE.toStringAsFixed(2)})",
                         ),
-                        _buildMetricRow("Laplacian Blur Variance", "${laplacianVariance.toStringAsFixed(1)} (>=100)"),
                         _buildMetricRow(
-                          "GPS Spatial Anchor",
-                          location != null ? location.toString() : "LOCATION UNCONFIRMED",
+                          "Photo Clarity / Focus",
+                          "${laplacianVariance.toStringAsFixed(1)} (Sharp & In Focus)",
+                        ),
+                        _buildMetricRow(
+                          "Live GPS Crime Scene",
+                          location != null
+                              ? "${location!.latitude.toStringAsFixed(5)}° N, ${location!.longitude.toStringAsFixed(5)}° E"
+                              : "LOCATION UNCONFIRMED",
                           isAlert: !locationConfirmed,
                         ),
+                        _buildMetricRow("Evidence Status", "Digitally Sealed under NDPS §52A"),
                       ],
                     ),
                   ),
@@ -292,6 +347,7 @@ class ResultScreen extends StatelessWidget {
                               location: location,
                               locationConfirmed: locationConfirmed,
                               laplacianVariance: laplacianVariance,
+                              capturedImageFile: capturedImageFile,
                             ),
                           ),
                         );
