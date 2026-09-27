@@ -157,7 +157,7 @@ class LocalRecordModel {
   }
 
   /// Strict 140-char GSM SMS Anchor representation for 2G out-of-band witness
-  /// Format: NCB|<short_id>|<hash_32>|<officer>|<result>|<lat,long>
+  /// Format: MHA|<short_id>|<hash_32>|<officer>|<result>|<lat,long>
   String toGsmSmsPayload() {
     final shortId = testId.replaceAll('TEST-', '').replaceAll('NDPS-', '');
     final hashPrefix = recordHash.length > 32 ? recordHash.substring(0, 32) : recordHash;

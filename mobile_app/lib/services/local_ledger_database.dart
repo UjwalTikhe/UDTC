@@ -45,7 +45,7 @@ class LocalLedgerDatabase {
 
     return await openDatabase(
       path,
-      version: 4,
+      version: 5,
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
     );
@@ -87,15 +87,21 @@ class LocalLedgerDatabase {
         user_id TEXT NOT NULL UNIQUE,
         name TEXT NOT NULL,
         email TEXT NOT NULL UNIQUE,
-        badge_number TEXT NOT NULL UNIQUE,
-        age INTEGER NOT NULL,
-        gender TEXT NOT NULL,
-        city TEXT NOT NULL,
-        role TEXT NOT NULL,
-        department TEXT NOT NULL,
+        badge_number TEXT NOT NULL,
+        age INTEGER NOT NULL DEFAULT 30,
+        gender TEXT NOT NULL DEFAULT 'Male',
+        city TEXT NOT NULL DEFAULT 'New Delhi',
+        role TEXT NOT NULL DEFAULT 'officer',
+        department TEXT NOT NULL DEFAULT 'Ministry of Home Affairs',
         password_hash TEXT NOT NULL,
         password_salt TEXT NOT NULL,
-        device_id TEXT NOT NULL,
+        device_id TEXT NOT NULL DEFAULT 'MHA-SECURE-DEV-001',
+        dob TEXT DEFAULT '1996-05-15',
+        phone TEXT DEFAULT '+91 98765 43210',
+        rank TEXT DEFAULT 'Police Sub-Inspector (PSI)',
+        unit TEXT DEFAULT 'Special Task Force (Anti-Narcotics Unit)',
+        is_verified INTEGER DEFAULT 0,
+        service_id TEXT,
         created_at REAL NOT NULL
       )
     ''');
@@ -165,6 +171,14 @@ class LocalLedgerDatabase {
           device_id TEXT
         )
       ''');
+    }
+    if (oldVersion < 5) {
+      try { await db.execute('ALTER TABLE users ADD COLUMN dob TEXT DEFAULT "1996-05-15"'); } catch (_) {}
+      try { await db.execute('ALTER TABLE users ADD COLUMN phone TEXT DEFAULT "+91 98765 43210"'); } catch (_) {}
+      try { await db.execute('ALTER TABLE users ADD COLUMN rank TEXT DEFAULT "Police Sub-Inspector (PSI)"'); } catch (_) {}
+      try { await db.execute('ALTER TABLE users ADD COLUMN unit TEXT DEFAULT "Special Task Force (Anti-Narcotics Unit)"'); } catch (_) {}
+      try { await db.execute('ALTER TABLE users ADD COLUMN is_verified INTEGER DEFAULT 0'); } catch (_) {}
+      try { await db.execute('ALTER TABLE users ADD COLUMN service_id TEXT'); } catch (_) {}
     }
   }
 
@@ -317,13 +331,13 @@ class LocalLedgerDatabase {
       testId: "NDPS-2026-TEST-0042",
       timestampUtc: DateTime.utc(2026, 9, 26, 14, 20).millisecondsSinceEpoch / 1000.0,
       officerId: "OFFICER-RAJESH-04",
-      deviceId: "NCB-DEV-S24-IND01",
+      deviceId: "MHA-SECURE-DEV-001",
       kitType: "MARQUIS_OPIATE",
       classification: "PRESUMPTIVE_POSITIVE",
       deltaE2000: 2.64,
       confidence: 96.8,
       imageSha256: "b4a8e32c84279b9a19d854cf6097d8eefc8c7d3d5267b12260ff0d4810819777",
-      cardSerial: "NCB-CARD-2026-0081",
+      cardSerial: "MHACARD-2026-DEL-0491",
       latitude: 28.5355,
       longitude: 77.2410,
       locationStatus: "GPS_CONFIRMED",
@@ -378,13 +392,13 @@ class LocalLedgerDatabase {
       testId: "NDPS-2026-TEST-0043",
       timestampUtc: DateTime.utc(2026, 9, 26, 18, 45).millisecondsSinceEpoch / 1000.0,
       officerId: "OFFICER-RAJESH-04",
-      deviceId: "NCB-DEV-S24-IND01",
+      deviceId: "MHA-SECURE-DEV-001",
       kitType: "SCOTT_COCAINE",
       classification: "PRESUMPTIVE_NEGATIVE",
       deltaE2000: 38.45,
       confidence: 94.2,
       imageSha256: "c188f8d2e8e97a3297f6e3c153b89088b901fc82d5e5421f2bb8cb617cf12e98",
-      cardSerial: "NCB-CARD-2026-0081",
+      cardSerial: "MHACARD-2026-DEL-0491",
       latitude: 28.5361,
       longitude: 77.2418,
       locationStatus: "GPS_CONFIRMED",
@@ -461,6 +475,12 @@ class LocalLedgerDatabase {
         password: "Officer@123",
         department: "Ministry of Home Affairs • Special Task Force",
         deviceId: "MHA-SECURE-DEV-001",
+        rank: "Police Sub-Inspector (PSI)",
+        unit: "Special Task Force (Anti-Narcotics Unit)",
+        isVerified: true,
+        serviceId: "MH-PSI-2026-081",
+        phone: "+91 98765 43210",
+        dob: "1998-08-14",
       );
 
       // Seed Rajesh Kumar (ASI)
@@ -475,6 +495,12 @@ class LocalLedgerDatabase {
         password: "Officer@123",
         department: "Ministry of Home Affairs • Forensic Operations Division",
         deviceId: "MHA-SECURE-DEV-001",
+        rank: "Assistant Sub-Inspector (ASI)",
+        unit: "Northern Zone Field Unit",
+        isVerified: true,
+        serviceId: "MHA-SO-2026-7841",
+        phone: "+91 98990 12345",
+        dob: "1992-03-22",
       );
 
       // Seed Amitabh Sharma (SP)
@@ -489,6 +515,12 @@ class LocalLedgerDatabase {
         password: "Supervisor@123",
         department: "Ministry of Home Affairs • Forensic Directorate",
         deviceId: "MHA-SECURE-DEV-001",
+        rank: "Superintendent of Police (SP)",
+        unit: "Zonal Forensic Directorate",
+        isVerified: true,
+        serviceId: "MHA-SP-2026-004",
+        phone: "+91 98110 98765",
+        dob: "1978-11-05",
       );
     }
 
@@ -667,6 +699,12 @@ class LocalLedgerDatabase {
     required String password,
     String? department,
     String? deviceId,
+    String? rank,
+    String? unit,
+    bool isVerified = true,
+    String? serviceId,
+    String dob = "1996-05-15",
+    String phone = "+91 98765 43210",
   }) async {
     final db = await instance.database;
     final cleanEmail = email.trim().toLowerCase();
@@ -691,6 +729,8 @@ class LocalLedgerDatabase {
     final userId = "MHA-${cleanBadge.replaceAll(RegExp(r'[^A-Za-z0-9]'), '')}";
     final dept = department ?? "Ministry of Home Affairs • Forensic Operations Division";
     final devId = deviceId ?? "MHA-SECURE-DEV-001";
+    final effRank = rank ?? (role == Role.supervisor ? "Superintendent of Police (SP)" : "Police Sub-Inspector (PSI)");
+    final effUnit = unit ?? "Special Task Force (Anti-Narcotics Unit)";
     final nowUtc = DateTime.now().millisecondsSinceEpoch / 1000.0;
 
     await db.insert(
@@ -708,6 +748,12 @@ class LocalLedgerDatabase {
         'password_hash': passHash,
         'password_salt': salt,
         'device_id': devId,
+        'dob': dob,
+        'phone': phone,
+        'rank': effRank,
+        'unit': effUnit,
+        'is_verified': isVerified ? 1 : 0,
+        'service_id': serviceId,
         'created_at': nowUtc,
       },
       conflictAlgorithm: ConflictAlgorithm.abort,
@@ -725,7 +771,206 @@ class LocalLedgerDatabase {
       role: role,
       deviceId: devId,
       provisionedAt: DateTime.now(),
+      rank: effRank,
+      unit: effUnit,
+      isVerified: isVerified,
+      serviceId: serviceId,
+      dob: dob,
+      phone: phone,
     );
+  }
+
+  /// Simplified registration: Sign up with Email and Password only (+ optional Name)
+  Future<User> registerUserWithEmail({
+    required String email,
+    required String password,
+    String? name,
+  }) async {
+    final db = await instance.database;
+    final cleanEmail = email.trim().toLowerCase();
+
+    final existing = await db.query(
+      'users',
+      where: 'LOWER(email) = ?',
+      whereArgs: [cleanEmail],
+    );
+    if (existing.isNotEmpty) {
+      throw Exception("An officer account with email '$cleanEmail' already exists. Please Sign In.");
+    }
+
+    final salt = "${DateTime.now().millisecondsSinceEpoch}_${cleanEmail.hashCode}";
+    final passHash = hashPassword(password, salt);
+    final randomDigits = (DateTime.now().millisecondsSinceEpoch % 9000 + 1000).toString();
+    final placeholderBadge = "MHA-PENDING-$randomDigits";
+    final userId = "MHA-$randomDigits";
+    final effectiveName = (name != null && name.trim().isNotEmpty)
+        ? name.trim()
+        : "Officer ${cleanEmail.split('@').first}";
+    final nowUtc = DateTime.now().millisecondsSinceEpoch / 1000.0;
+
+    await db.insert(
+      'users',
+      {
+        'user_id': userId,
+        'name': effectiveName,
+        'email': cleanEmail,
+        'badge_number': placeholderBadge,
+        'age': 28,
+        'gender': 'Male',
+        'city': 'New Delhi',
+        'role': Role.officer.name,
+        'department': 'Ministry of Home Affairs • Field Operations',
+        'password_hash': passHash,
+        'password_salt': salt,
+        'device_id': 'MHA-SECURE-DEV-001',
+        'dob': '1998-05-15',
+        'phone': '+91 98765 00000',
+        'rank': 'Field Officer (Unverified)',
+        'unit': 'Anti-Narcotics Field Operations',
+        'is_verified': 0,
+        'service_id': null,
+        'created_at': nowUtc,
+      },
+    );
+
+    return User(
+      userId: userId,
+      name: effectiveName,
+      email: cleanEmail,
+      badgeNumber: placeholderBadge,
+      age: 28,
+      gender: 'Male',
+      city: 'New Delhi',
+      department: 'Ministry of Home Affairs • Field Operations',
+      role: Role.officer,
+      deviceId: 'MHA-SECURE-DEV-001',
+      provisionedAt: DateTime.now(),
+      rank: 'Field Officer (Unverified)',
+      unit: 'Anti-Narcotics Field Operations',
+      isVerified: false,
+      dob: '1998-05-15',
+      phone: '+91 98765 00000',
+    );
+  }
+
+  /// Update personal details in local SQLite database
+  Future<User> updateUserProfile({
+    required String email,
+    String? name,
+    String? gender,
+    String? dob,
+    String? city,
+    String? phone,
+    int? age,
+  }) async {
+    final db = await instance.database;
+    final cleanEmail = email.trim().toLowerCase();
+
+    final updateData = <String, dynamic>{};
+    if (name != null && name.trim().isNotEmpty) updateData['name'] = name.trim();
+    if (gender != null && gender.trim().isNotEmpty) updateData['gender'] = gender.trim();
+    if (dob != null && dob.trim().isNotEmpty) updateData['dob'] = dob.trim();
+    if (city != null && city.trim().isNotEmpty) updateData['city'] = city.trim();
+    if (phone != null && phone.trim().isNotEmpty) updateData['phone'] = phone.trim();
+    if (age != null && age > 0) updateData['age'] = age;
+
+    if (updateData.isNotEmpty) {
+      await db.update(
+        'users',
+        updateData,
+        where: 'LOWER(email) = ?',
+        whereArgs: [cleanEmail],
+      );
+    }
+
+    final updated = await getUserByEmail(cleanEmail);
+    return updated!;
+  }
+
+  /// Update officer password with salted SHA-256 validation
+  Future<void> changePassword({
+    required String email,
+    required String oldPassword,
+    required String newPassword,
+  }) async {
+    final db = await instance.database;
+    final cleanEmail = email.trim().toLowerCase();
+
+    final results = await db.query(
+      'users',
+      where: 'LOWER(email) = ?',
+      whereArgs: [cleanEmail],
+      limit: 1,
+    );
+    if (results.isEmpty) {
+      throw Exception("Officer account not found.");
+    }
+
+    final row = results.first;
+    final storedHash = row['password_hash'] as String;
+    final salt = row['password_salt'] as String;
+
+    final computedHash = hashPassword(oldPassword, salt);
+    if (computedHash != storedHash) {
+      throw Exception("Current password verification failed. Please try again.");
+    }
+
+    if (newPassword.trim().length < 6) {
+      throw Exception("New password must be at least 6 characters.");
+    }
+
+    final newSalt = "${DateTime.now().millisecondsSinceEpoch}_${cleanEmail.hashCode}";
+    final newPassHash = hashPassword(newPassword.trim(), newSalt);
+
+    await db.update(
+      'users',
+      {
+        'password_hash': newPassHash,
+        'password_salt': newSalt,
+      },
+      where: 'LOWER(email) = ?',
+      whereArgs: [cleanEmail],
+    );
+  }
+
+  /// Bind logged-in account to verified Department Registry record
+  Future<User> bindUserToDepartmentOfficer({
+    required String userEmail,
+    required DepartmentOfficer officer,
+  }) async {
+    final db = await instance.database;
+    final cleanEmail = userEmail.trim().toLowerCase();
+
+    await db.update(
+      'users',
+      {
+        'name': officer.name,
+        'badge_number': officer.badgeNumber,
+        'rank': officer.rank,
+        'unit': officer.unit,
+        'city': officer.city,
+        'role': officer.role.name,
+        'department': "${officer.unit} • Ministry of Home Affairs",
+        'is_verified': 1,
+        'service_id': officer.serviceId,
+        'phone': officer.registeredPhone,
+      },
+      where: 'LOWER(email) = ?',
+      whereArgs: [cleanEmail],
+    );
+
+    await db.update(
+      'department_registry',
+      {
+        'is_activated': 1,
+        'device_id': 'MHA-SECURE-DEV-001',
+      },
+      where: 'service_id = ?',
+      whereArgs: [officer.serviceId],
+    );
+
+    final updated = await getUserByEmail(cleanEmail);
+    return updated!;
   }
 
   Future<User?> authenticateUser({
@@ -767,6 +1012,12 @@ class LocalLedgerDatabase {
       role: Role.values.firstWhere((e) => e.name == row['role'], orElse: () => Role.officer),
       deviceId: row['device_id'] as String,
       provisionedAt: DateTime.fromMillisecondsSinceEpoch(((row['created_at'] as num) * 1000).toInt()),
+      rank: row['rank'] as String? ?? 'Police Sub-Inspector (PSI)',
+      unit: row['unit'] as String? ?? 'Special Task Force (Anti-Narcotics Unit)',
+      isVerified: (row['is_verified'] as num?)?.toInt() == 1,
+      serviceId: row['service_id'] as String?,
+      dob: row['dob'] as String? ?? '1996-05-15',
+      phone: row['phone'] as String? ?? '+91 98765 43210',
     );
   }
 
@@ -796,6 +1047,12 @@ class LocalLedgerDatabase {
       role: Role.values.firstWhere((e) => e.name == row['role'], orElse: () => Role.officer),
       deviceId: row['device_id'] as String,
       provisionedAt: DateTime.fromMillisecondsSinceEpoch(((row['created_at'] as num) * 1000).toInt()),
+      rank: row['rank'] as String? ?? 'Police Sub-Inspector (PSI)',
+      unit: row['unit'] as String? ?? 'Special Task Force (Anti-Narcotics Unit)',
+      isVerified: (row['is_verified'] as num?)?.toInt() == 1,
+      serviceId: row['service_id'] as String?,
+      dob: row['dob'] as String? ?? '1996-05-15',
+      phone: row['phone'] as String? ?? '+91 98765 43210',
     );
   }
 }

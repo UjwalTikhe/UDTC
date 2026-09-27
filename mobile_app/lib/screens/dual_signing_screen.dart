@@ -45,7 +45,7 @@ class _DualSigningScreenState extends State<DualSigningScreen> {
 
   final TextEditingController _pinController = TextEditingController(text: "749210");
   final String _officerId = "OFFICER-RAJESH-04";
-  final String _deviceId = "NCB-DEV-S24-IND01";
+  final String _deviceId = "MHA-SECURE-DEV-001";
 
   String _prevHash = "...";
   String? _deviceSigHex;

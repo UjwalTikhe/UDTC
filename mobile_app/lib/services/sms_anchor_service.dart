@@ -25,9 +25,9 @@ class SmsAnchorService {
   static final SmsAnchorService instance = SmsAnchorService._internal();
   SmsAnchorService._internal();
 
-  static const MethodChannel _smsChannel = MethodChannel('in.gov.ncb/sms');
+  static const MethodChannel _smsChannel = MethodChannel('in.gov.mha/sms');
 
-  final String ncbGatewayNumber = "+91-11-2617-NCB0";
+  final String mhaGatewayNumber = "+91-11-2309-MHA1";
   final List<SmsDispatchEntry> _outbox = [];
 
   List<SmsDispatchEntry> get outboxHistory => List.unmodifiable(_outbox);
@@ -43,7 +43,7 @@ class SmsAnchorService {
 
     try {
       final res = await _smsChannel.invokeMethod<bool>('sendSms', {
-        'to': ncbGatewayNumber,
+        'to': mhaGatewayNumber,
         'message': payload,
       });
       if (res == true) {
@@ -61,7 +61,7 @@ class SmsAnchorService {
 
     final entry = SmsDispatchEntry(
       testId: record.testId,
-      destinationNumber: ncbGatewayNumber,
+      destinationNumber: mhaGatewayNumber,
       gsmPayload: payload,
       timestamp: now,
       status: status,

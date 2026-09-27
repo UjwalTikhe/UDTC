@@ -91,7 +91,7 @@ class _ReactionTimerScreenState extends State<ReactionTimerScreen> {
         child: Column(
           children: [
             const GovHeaderBanner(
-              titleText: "NARCOTICS CONTROL BUREAU",
+              titleText: "MINISTRY OF HOME AFFAIRS",
               subtitleText: "STEP 3 OF 6: CHEMICAL CHROMOPHORE STABILIZATION",
             ),
             Expanded(

@@ -44,9 +44,6 @@ class _RecordDetailScreenState extends State<RecordDetailScreen> {
     try {
       final dir = await getApplicationDocumentsDirectory();
       File f = File("${dir.path}/MHA_SEIZURE_${widget.record.testId}_WATERMARKED.png");
-      if (!await f.exists()) {
-        f = File("${dir.path}/NCB_SEIZURE_${widget.record.testId}_WATERMARKED.png");
-      }
       if (await f.exists()) {
         setState(() => _evidencePhoto = f);
       }

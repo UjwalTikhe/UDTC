@@ -48,7 +48,7 @@ class TestAnalysisScreen extends StatelessWidget {
         child: Column(
           children: [
             const GovHeaderBanner(
-              titleText: "NARCOTICS CONTROL BUREAU",
+              titleText: "MINISTRY OF HOME AFFAIRS",
               subtitleText: "COLORIMETRY ANALYSIS • NDPS ACT §52A",
             ),
             const StatutoryWarningBanner(),

@@ -21,6 +21,8 @@ class User {
   final String unit;
   final bool isVerified;
   final String? serviceId;
+  final String dob;
+  final String phone;
 
   User({
     required this.userId,
@@ -38,7 +40,47 @@ class User {
     this.unit = "Special Task Force (Anti-Narcotics Unit)",
     this.isVerified = true,
     this.serviceId,
+    this.dob = "1996-05-15",
+    this.phone = "+91 98765 43210",
   });
+
+  User copyWith({
+    String? userId,
+    String? name,
+    String? email,
+    String? badgeNumber,
+    int? age,
+    String? gender,
+    String? city,
+    String? department,
+    Role? role,
+    String? deviceId,
+    DateTime? provisionedAt,
+    String? rank,
+    String? unit,
+    bool? isVerified,
+    String? serviceId,
+    String? dob,
+    String? phone,
+  }) => User(
+    userId: userId ?? this.userId,
+    name: name ?? this.name,
+    email: email ?? this.email,
+    badgeNumber: badgeNumber ?? this.badgeNumber,
+    age: age ?? this.age,
+    gender: gender ?? this.gender,
+    city: city ?? this.city,
+    department: department ?? this.department,
+    role: role ?? this.role,
+    deviceId: deviceId ?? this.deviceId,
+    provisionedAt: provisionedAt ?? this.provisionedAt,
+    rank: rank ?? this.rank,
+    unit: unit ?? this.unit,
+    isVerified: isVerified ?? this.isVerified,
+    serviceId: serviceId ?? this.serviceId,
+    dob: dob ?? this.dob,
+    phone: phone ?? this.phone,
+  );
 
   Map<String, dynamic> toMap() => {
     'userId': userId,
@@ -56,26 +98,32 @@ class User {
     'unit': unit,
     'isVerified': isVerified,
     'serviceId': serviceId,
+    'dob': dob,
+    'phone': phone,
   };
 
   factory User.fromMap(Map<String, dynamic> map) => User(
-    userId: map['userId'] as String? ?? 'MHA-DEFAULT',
+    userId: map['userId'] as String? ?? (map['user_id'] as String?) ?? 'MHA-DEFAULT',
     name: map['name'] as String? ?? 'Officer',
     email: map['email'] as String? ?? 'officer@mha.gov.in',
-    badgeNumber: map['badgeNumber'] as String? ?? 'MHA-NZ-7841',
+    badgeNumber: map['badgeNumber'] as String? ?? (map['badge_number'] as String?) ?? 'MHA-NZ-7841',
     age: (map['age'] as num?)?.toInt() ?? 30,
     gender: map['gender'] as String? ?? 'Male',
     city: map['city'] as String? ?? 'New Delhi',
     department: map['department'] as String? ?? 'Ministry of Home Affairs • Forensic Operations Division',
     role: Role.values.firstWhere((e) => e.name == map['role'], orElse: () => Role.officer),
-    deviceId: map['deviceId'] as String? ?? 'MHA-SECURE-DEV-001',
+    deviceId: map['deviceId'] as String? ?? (map['device_id'] as String?) ?? 'MHA-SECURE-DEV-001',
     provisionedAt: map['provisionedAt'] != null 
         ? DateTime.parse(map['provisionedAt'] as String) 
-        : DateTime.now(),
+        : (map['created_at'] != null 
+            ? DateTime.fromMillisecondsSinceEpoch(((map['created_at'] as num) * 1000).toInt()) 
+            : DateTime.now()),
     rank: map['rank'] as String? ?? 'Police Sub-Inspector (PSI)',
     unit: map['unit'] as String? ?? 'Special Task Force (Anti-Narcotics Unit)',
-    isVerified: map['isVerified'] as bool? ?? true,
-    serviceId: map['serviceId'] as String?,
+    isVerified: (map['isVerified'] ?? map['is_verified']) == 1 || (map['isVerified'] ?? map['is_verified']) == true,
+    serviceId: (map['serviceId'] ?? map['service_id']) as String?,
+    dob: map['dob'] as String? ?? '1996-05-15',
+    phone: map['phone'] as String? ?? '+91 98765 43210',
   );
 }
 
@@ -368,7 +416,7 @@ class TestRecord {
     final gpsStr = (location != null && locationConfirmed)
         ? '${location!.latitude.toStringAsFixed(3)},${location!.longitude.toStringAsFixed(3)}'
         : 'NOGPS';
-    return 'NCB|$shortId|$hashPrefix|${officer.badgeNumber}|$resCode|$gpsStr';
+    return 'MHA|$shortId|$hashPrefix|${officer.badgeNumber}|$resCode|$gpsStr';
   }
 }
 

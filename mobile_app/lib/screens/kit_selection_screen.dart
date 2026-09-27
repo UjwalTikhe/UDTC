@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../theme/gov_theme.dart';
 import '../models/domain_models.dart';
 import 'card_scan_screen.dart';
+import 'camera_capture_screen.dart';
 
 /// Screen 4: Kit Selection Screen
 /// Forensic selection of certified government drug testing kit (NDDK, PCDK, KDK)
@@ -16,7 +17,7 @@ class KitSelectionScreen extends StatefulWidget {
 
 class _KitSelectionScreenState extends State<KitSelectionScreen> {
   KitType _selectedKit = KitType.nddk;
-  final TextEditingController _batchController = TextEditingController(text: "NCB-BATCH-2026-09B");
+  final TextEditingController _batchController = TextEditingController(text: "MHA-BATCH-2026-09B");
 
   @override
   void dispose() {
@@ -49,7 +50,7 @@ class _KitSelectionScreenState extends State<KitSelectionScreen> {
         child: Column(
           children: [
             const GovHeaderBanner(
-              titleText: "NARCOTICS CONTROL BUREAU",
+              titleText: "MINISTRY OF HOME AFFAIRS",
               subtitleText: "STEP 1 OF 6: REAGENT ASSAY SPECIFICATION",
             ),
             Expanded(
@@ -154,14 +155,43 @@ class _KitSelectionScreenState extends State<KitSelectionScreen> {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.all(GovTheme.space16),
-              child: ElevatedButton.icon(
-                onPressed: _proceedToCardScan,
-                icon: const Icon(Icons.arrow_forward, color: Colors.white),
-                label: const Text(
-                  "PROCEED TO REFERENCE CARD SCAN",
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.white),
-                ),
+              padding: const EdgeInsets.symmetric(horizontal: GovTheme.space16, vertical: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: GovTheme.primary,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    onPressed: () {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => CameraCaptureScreen(
+                            currentUser: widget.currentUser,
+                            selectedKit: _selectedKit,
+                            reagentBatch: _batchController.text.trim(),
+                          ),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.camera_alt, color: Colors.white, size: 20),
+                    label: const Text(
+                      "LAUNCH FIELD CAMERA & GPS",
+                      style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: Colors.white),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    onPressed: _proceedToCardScan,
+                    icon: const Icon(Icons.arrow_forward, size: 16),
+                    label: const Text(
+                      "Manual Card Scan Protocol (Optional)",
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],

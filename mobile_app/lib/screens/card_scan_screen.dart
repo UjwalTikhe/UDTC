@@ -71,8 +71,8 @@ class _CardScanScreenState extends State<CardScanScreen> {
   }
 
   void _validateAndProceed(String payload) {
-    // Validate format: must start with "MHACARD-" or "NCBCARD-"
-    if (!payload.startsWith("MHACARD-") && !payload.startsWith("NCBCARD-")) {
+    // Validate format: must start with "MHACARD-"
+    if (!payload.startsWith("MHACARD-")) {
       setState(() {
         _isScanning = true;
         _consecutiveReads = 0;
@@ -175,7 +175,7 @@ class _CardScanScreenState extends State<CardScanScreen> {
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             color: Colors.black54,
                             child: Text(
-                              "NCBCARD QR ZONE",
+                              "MHACARD QR ZONE",
                               style: TextStyle(
                                 color: Colors.white.withOpacity(0.9),
                                 fontSize: 10,
@@ -254,9 +254,9 @@ class _CardScanScreenState extends State<CardScanScreen> {
                                 ),
                                 onPressed: () {
                                   // Send 3 consecutive frame triggers of valid card
-                                  _simulateFrameScan("NCBCARD-2026-DEL-0491");
-                                  _simulateFrameScan("NCBCARD-2026-DEL-0491");
-                                  _simulateFrameScan("NCBCARD-2026-DEL-0491");
+                                  _simulateFrameScan("MHACARD-2026-DEL-0491");
+                                  _simulateFrameScan("MHACARD-2026-DEL-0491");
+                                  _simulateFrameScan("MHACARD-2026-DEL-0491");
                                 },
                                 icon: const Icon(Icons.qr_code, size: 18, color: Colors.white),
                                 label: const Text(

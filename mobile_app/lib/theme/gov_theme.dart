@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Government of India / Ministry of Home Affairs (NCB) Design System
+/// Government of India / Ministry of Home Affairs (MHA) Design System
 /// Compliant with GIGW 3.0 (Guidelines for Indian Government Websites & Apps)
 /// and WCAG 2.1 Level AA (Minimum 4.5:1 text contrast).
 class GovTheme {

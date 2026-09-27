@@ -12,10 +12,10 @@ class ProvisioningScreen extends StatelessWidget {
     return ProfileSettingsScreen(
       currentUser: User(
         userId: "OFFICER-7841",
-        badgeNumber: "NCB-NZ-7841",
-        department: "Narcotics Control Bureau (Operations)",
+        badgeNumber: "MH-8842",
+        department: "Ministry of Home Affairs (Operations)",
         role: Role.officer,
-        deviceId: "NCB-SECURE-DEV-001",
+        deviceId: "MHA-SECURE-DEV-001",
         provisionedAt: DateTime.now().subtract(const Duration(days: 30)),
       ),
     );

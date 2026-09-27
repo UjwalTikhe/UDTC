@@ -7,6 +7,7 @@ import '../services/staged_sync_service.dart';
 import '../services/crypto_signer_service.dart';
 import '../repositories/field_record_repository.dart';
 import 'kit_selection_screen.dart';
+import 'camera_capture_screen.dart';
 import 'history_screen.dart';
 import 'record_detail_screen.dart';
 import 'sync_status_screen.dart';
@@ -14,7 +15,7 @@ import 'approval_queue_screen.dart';
 import 'profile_settings_screen.dart';
 
 /// Screen 3: Official Home / Dashboard Screen
-/// GIGW 3.0 / WCAG 2.1 AA compliant operational portal for NCB field officers and supervisors.
+/// GIGW 3.0 / WCAG 2.1 AA compliant operational portal for MHA field officers and supervisors.
 class DashboardScreen extends StatefulWidget {
   final User? currentUser;
   const DashboardScreen({super.key, this.currentUser});
@@ -90,6 +91,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
+        builder: (_) => CameraCaptureScreen(currentUser: _user),
+      ),
+    ).then((_) => _refreshDashboard());
+  }
+
+  void _startLabProtocol() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
         builder: (_) => KitSelectionScreen(currentUser: _user),
       ),
     ).then((_) => _refreshDashboard());
@@ -104,36 +114,68 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Scaffold(
       backgroundColor: GovTheme.bgBase,
       appBar: AppBar(
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
+        title: InkWell(
+          borderRadius: BorderRadius.circular(8),
+          onTap: () async {
+            final updatedUser = await Navigator.push<User>(
+              context,
+              MaterialPageRoute(
+                builder: (_) => ProfileSettingsScreen(currentUser: _user),
               ),
-              child: Image.asset(
-                'assets/mha_emblem.png',
-                height: 26,
-                fit: BoxFit.contain,
-                errorBuilder: (_, __, ___) => const Icon(Icons.shield, color: Colors.amberAccent, size: 20),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            );
+            if (updatedUser != null && mounted) {
+              setState(() => _user = updatedUser);
+            }
+          },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  _user.name.isNotEmpty ? _user.name : "MHA Field Companion",
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Image.asset(
+                    'assets/mha_emblem.png',
+                    height: 26,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, __, ___) => const Icon(Icons.shield, color: Colors.amberAccent, size: 20),
+                  ),
                 ),
-                Text(
-                  "${_user.badgeNumber} • ${_user.role.name.toUpperCase()}",
-                  style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.85)),
+                const SizedBox(width: 10),
+                Flexible(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              _user.name.isNotEmpty ? _user.name : "MHA Field Companion",
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          const Icon(Icons.arrow_drop_down, color: Colors.white70, size: 18),
+                        ],
+                      ),
+                      Text(
+                        "${_user.badgeNumber} • ${_user.role.name.toUpperCase()}",
+                        style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.85)),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
-          ],
+          ),
         ),
         actions: [
           IconButton(
@@ -150,13 +192,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
           IconButton(
             icon: const Icon(Icons.account_circle),
             tooltip: "Officer Profile & Settings",
-            onPressed: () {
-              Navigator.push(
+            onPressed: () async {
+              final updatedUser = await Navigator.push<User>(
                 context,
                 MaterialPageRoute(
                   builder: (_) => ProfileSettingsScreen(currentUser: _user),
                 ),
               );
+              if (updatedUser != null && mounted) {
+                setState(() => _user = updatedUser);
+              }
             },
           ),
         ],
@@ -176,100 +221,165 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       child: ListView(
                         padding: const EdgeInsets.all(GovTheme.space16),
                         children: [
-                          // 1. Officer Credentials & Device Binding Strip
-                          Container(
-                            padding: const EdgeInsets.all(GovTheme.space16),
-                            decoration: BoxDecoration(
-                              color: GovTheme.bgSurface,
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: GovTheme.borderDefault),
+                          // 1. Officer Credentials & Device Binding Strip (Clickable to open profile)
+                          InkWell(
+                            borderRadius: BorderRadius.circular(8),
+                            onTap: () async {
+                              final updatedUser = await Navigator.push<User>(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => ProfileSettingsScreen(currentUser: _user),
+                                ),
+                              );
+                              if (updatedUser != null && mounted) {
+                                setState(() => _user = updatedUser);
+                              }
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.all(GovTheme.space16),
+                              decoration: BoxDecoration(
+                                color: GovTheme.bgSurface,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: _user.isVerified ? GovTheme.borderDefault : Colors.amber.shade400,
+                                  width: _user.isVerified ? 1 : 1.5,
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      color: (_user.isVerified ? GovTheme.primary : Colors.amber.shade700).withOpacity(0.08),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(
+                                      _user.isVerified ? Icons.badge : Icons.pending_actions,
+                                      color: _user.isVerified ? GovTheme.primary : Colors.amber.shade800,
+                                      size: 26,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          _user.name.isNotEmpty ? _user.name : _user.badgeNumber,
+                                          style: const TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w900,
+                                            color: GovTheme.ashokaNavy,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          "${_user.rank} • Badge: ${_user.badgeNumber}",
+                                          style: const TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w600,
+                                            color: GovTheme.textPrimary,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 1),
+                                        Text(
+                                          "${_user.unit} • ${_user.city}",
+                                          style: GovTheme.caption,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: _user.isVerified ? Colors.green.shade50 : Colors.amber.shade50,
+                                      borderRadius: BorderRadius.circular(4),
+                                      border: Border.all(
+                                        color: _user.isVerified ? Colors.green.shade600 : Colors.amber.shade700,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          _user.isVerified ? Icons.verified : Icons.warning_amber_rounded,
+                                          size: 12,
+                                          color: _user.isVerified ? Colors.green.shade700 : Colors.amber.shade900,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          _user.isVerified ? "VERIFIED" : "VERIFY NOW",
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w900,
+                                            color: _user.isVerified ? Colors.green.shade800 : Colors.amber.shade900,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(10),
-                                  decoration: BoxDecoration(
-                                    color: GovTheme.primary.withOpacity(0.08),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(Icons.badge, color: GovTheme.primary, size: 26),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        _user.name.isNotEmpty ? _user.name : _user.badgeNumber,
-                                        style: const TextStyle(
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w900,
-                                          color: GovTheme.ashokaNavy,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        "${_user.rank} • Badge: ${_user.badgeNumber}",
-                                        style: const TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w600,
-                                          color: GovTheme.textPrimary,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 1),
-                                      Text(
-                                        "${_user.unit} • ${_user.city}",
-                                        style: GovTheme.caption,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ],
+                          ),
+                          const SizedBox(height: GovTheme.space16),
+
+                          // 2. Primary CTA: START FIELD TEST (CAMERA & GPS)
+                          ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: GovTheme.primary,
+                              minimumSize: const Size.fromHeight(56),
+                              elevation: 3,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            onPressed: _startNewTest,
+                            icon: const Icon(Icons.camera_alt, color: Colors.white, size: 24),
+                            label: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: const [
+                                Text(
+                                  "START FIELD TEST (CAMERA & GPS)",
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: 0.5,
+                                    color: Colors.white,
                                   ),
                                 ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: Colors.green.shade50,
-                                    borderRadius: BorderRadius.circular(4),
-                                    border: Border.all(color: Colors.green.shade600),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(Icons.verified, size: 12, color: Colors.green.shade700),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        "VERIFIED",
-                                        style: TextStyle(
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.w900,
-                                          color: Colors.green.shade800,
-                                        ),
-                                      ),
-                                    ],
+                                SizedBox(height: 2),
+                                Text(
+                                  "Instant Camera Shutter • Live GPS Geolocation",
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.white70,
                                   ),
                                 ),
                               ],
                             ),
                           ),
-                          const SizedBox(height: GovTheme.space16),
+                          const SizedBox(height: 8),
 
-                          // 2. Primary CTA: START NEW FIELD TEST (56dp height)
-                          ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: GovTheme.primary,
-                              minimumSize: const Size.fromHeight(GovTheme.primaryButtonHeight),
-                              elevation: 2,
+                          // Secondary: Multi-step Lab Protocol
+                          OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              minimumSize: const Size.fromHeight(42),
+                              side: const BorderSide(color: GovTheme.borderDefault),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
                             ),
-                            onPressed: _startNewTest,
-                            icon: const Icon(Icons.add_a_photo, color: Colors.white, size: 22),
+                            onPressed: _startLabProtocol,
+                            icon: const Icon(Icons.science_outlined, size: 16, color: GovTheme.ashokaNavy),
                             label: const Text(
-                              "START NEW FIELD TEST",
+                              "Standard 6-Step Lab Protocol (Kit Selection)",
                               style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: 0.5,
-                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: GovTheme.ashokaNavy,
                               ),
                             ),
                           ),

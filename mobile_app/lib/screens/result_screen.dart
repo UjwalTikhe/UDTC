@@ -380,7 +380,7 @@ class ResultScreen extends StatelessWidget {
             style: TextStyle(
               fontSize: 12.5,
               fontWeight: FontWeight.w700,
-              fontFamily: value.startsWith("[") || value.startsWith("NCB") ? 'monospace' : 'Roboto',
+              fontFamily: value.startsWith("[") || value.startsWith("MHA") ? 'monospace' : 'Roboto',
               color: isAlert ? GovTheme.alertPositiveText : GovTheme.textPrimary,
             ),
           ),
