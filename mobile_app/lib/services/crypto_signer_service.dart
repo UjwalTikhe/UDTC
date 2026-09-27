@@ -27,8 +27,25 @@ class CryptoSignerService {
   ECPrivateKey? _devicePrivateKey;
   ECPublicKey? _devicePublicKey;
   String _deviceKeyFingerprint = "KEYSTORE-P256-NCB-DEV-042";
+  String? _derivedOfficerPin;
+  String _currentOfficerId = "OFFICER-7841";
 
   String get deviceKeyFingerprint => _deviceKeyFingerprint;
+
+  void deriveOfficerKeyFromPin(String pin, {String officerId = "OFFICER-7841"}) {
+    _derivedOfficerPin = pin;
+    _currentOfficerId = officerId;
+  }
+
+  String signWithDeviceHardware(String payload) => signWithDeviceHardwareKey(payload);
+
+  String signWithOfficerKey(String payload) {
+    return signWithOfficerPin(
+      officerPin: _derivedOfficerPin ?? "982341",
+      officerId: _currentOfficerId,
+      payloadToSign: payload,
+    );
+  }
 
   void initializeHardwareKeystore() {
     if (_devicePrivateKey != null) return;

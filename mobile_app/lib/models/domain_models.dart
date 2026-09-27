@@ -1,0 +1,296 @@
+import 'dart:convert';
+import 'package:crypto/crypto.dart';
+
+/// SIH26231 — Domain Model Specification (Section 2)
+/// Flat composition models for field drug testing compliance
+
+enum Role { officer, supervisor, auditor, admin }
+
+class User {
+  final String userId;
+  final String badgeNumber;
+  final String department;
+  final Role role;
+  final String deviceId; // bound hardware device
+  final DateTime provisionedAt;
+
+  User({
+    required this.userId,
+    required this.badgeNumber,
+    required this.department,
+    required this.role,
+    required this.deviceId,
+    required this.provisionedAt,
+  });
+
+  Map<String, dynamic> toMap() => {
+    'userId': userId,
+    'badgeNumber': badgeNumber,
+    'department': department,
+    'role': role.name,
+    'deviceId': deviceId,
+    'provisionedAt': provisionedAt.toIso8601String(),
+  };
+
+  factory User.fromMap(Map<String, dynamic> map) => User(
+    userId: map['userId'] as String? ?? 'OFFICER-DEFAULT',
+    badgeNumber: map['badgeNumber'] as String? ?? 'NCB-DEL-7841',
+    department: map['department'] as String? ?? 'Narcotics Control Bureau - Northern Zone',
+    role: Role.values.firstWhere((e) => e.name == map['role'], orElse: () => Role.officer),
+    deviceId: map['deviceId'] as String? ?? 'NCB-SECURE-DEV-001',
+    provisionedAt: map['provisionedAt'] != null 
+        ? DateTime.parse(map['provisionedAt'] as String) 
+        : DateTime.now(),
+  );
+}
+
+enum DeviceStatus { active, revoked, lost }
+
+class Device {
+  final String deviceId;
+  final String hardwareKeyFingerprint; // from Android Keystore / Secure Enclave
+  final String? assignedUserId;
+  final DeviceStatus status;
+
+  Device({
+    required this.deviceId,
+    required this.hardwareKeyFingerprint,
+    this.assignedUserId,
+    this.status = DeviceStatus.active,
+  });
+}
+
+enum CardStatus { active, retired, reported_lost }
+
+class ReferenceCard {
+  final String serial;
+  final String qrPayload;
+  final String? issuedToOfficerId;
+  final CardStatus status;
+
+  ReferenceCard({
+    required this.serial,
+    required this.qrPayload,
+    this.issuedToOfficerId,
+    this.status = CardStatus.active,
+  });
+}
+
+enum KitType { nddk, pcdk, kdk }
+
+extension KitTypeDetails on KitType {
+  String get displayName {
+    switch (this) {
+      case KitType.nddk:
+        return "NDDK (General Narcotics / Marquis)";
+      case KitType.pcdk:
+        return "PCDK (Cannabis / Duquenois-Levine)";
+      case KitType.kdk:
+        return "KDK (Cocaine / Scott Reagent)";
+    }
+  }
+
+  String get targetSubstance {
+    switch (this) {
+      case KitType.nddk:
+        return "Opium / Heroin / Morphine";
+      case KitType.pcdk:
+        return "Cannabis / Hashish / Marijuana";
+      case KitType.kdk:
+        return "Cocaine HCl / Crack";
+    }
+  }
+
+  int get reactionWindowSeconds {
+    switch (this) {
+      case KitType.nddk:
+        return 45;
+      case KitType.pcdk:
+        return 60;
+      case KitType.kdk:
+        return 30;
+    }
+  }
+}
+
+class CapturedFrame {
+  final String frameId;
+  final List<int> imageBytes;
+  final DateTime capturedAt;
+  final double laplacianVariance;
+  final double exposureScore;
+  final bool arucoDetected;
+
+  CapturedFrame({
+    required this.frameId,
+    required this.imageBytes,
+    required this.capturedAt,
+    required this.laplacianVariance,
+    required this.exposureScore,
+    required this.arucoDetected,
+  });
+}
+
+class CalibrationResult {
+  final double deltaE;
+  final double confidence;
+  final bool cardDetected;
+  final bool withinReactionWindow;
+  final bool qualityPassed;
+
+  CalibrationResult({
+    required this.deltaE,
+    required this.confidence,
+    required this.cardDetected,
+    required this.withinReactionWindow,
+    required this.qualityPassed,
+  });
+}
+
+enum ResultCategory { positive, negative, inconclusive }
+
+class ClassificationResult {
+  final ResultCategory category;
+  final double confidence;
+  final List<String> interferentWarnings;
+
+  ClassificationResult({
+    required this.category,
+    required this.confidence,
+    required this.interferentWarnings,
+  });
+}
+
+class GeoPoint {
+  final double latitude;
+  final double longitude;
+  final double accuracy;
+
+  GeoPoint({
+    required this.latitude,
+    required this.longitude,
+    this.accuracy = 5.0,
+  });
+
+  @override
+  String toString() => '${latitude.toStringAsFixed(5)}, ${longitude.toStringAsFixed(5)}';
+}
+
+class Signature {
+  final String signerId;
+  final String algorithm; // ECDSA-P256
+  final String signatureBytes;
+  final DateTime signedAt;
+
+  Signature({
+    required this.signerId,
+    this.algorithm = 'ECDSA-P256',
+    required this.signatureBytes,
+    required this.signedAt,
+  });
+}
+
+enum SyncStatus { pending, smsWitnessed, stagedSynced, fullyAnchored }
+
+class TestSession {
+  final String sessionId;
+  final KitType kitType;
+  final DateTime reactionStartedAt;
+  final List<CapturedFrame> burstFrames;
+  CalibrationResult? calibration;
+
+  TestSession({
+    required this.sessionId,
+    required this.kitType,
+    required this.reactionStartedAt,
+    this.burstFrames = const [],
+    this.calibration,
+  });
+}
+
+class TestRecord {
+  final String testId;
+  final String prevHash;
+  final String recordHash;
+  final User officer;
+  final Device device;
+  final ReferenceCard card;
+  final TestSession session;
+  final ClassificationResult result;
+  final GeoPoint? location;
+  final bool locationConfirmed;
+  final DateTime timestamp;
+  final Signature deviceSignature;
+  final Signature officerSignature;
+  SyncStatus syncStatus;
+
+  TestRecord({
+    required this.testId,
+    required this.prevHash,
+    required this.recordHash,
+    required this.officer,
+    required this.device,
+    required this.card,
+    required this.session,
+    required this.result,
+    this.location,
+    required this.locationConfirmed,
+    required this.timestamp,
+    required this.deviceSignature,
+    required this.officerSignature,
+    this.syncStatus = SyncStatus.pending,
+  });
+
+  /// Canonical JSON for Section 63 BSA compliance
+  String toCanonicalJson() {
+    final map = {
+      'test_id': testId,
+      'prev_hash': prevHash,
+      'officer_id': officer.userId,
+      'badge_number': officer.badgeNumber,
+      'device_id': device.deviceId,
+      'card_serial': card.serial,
+      'kit_type': session.kitType.name.toUpperCase(),
+      'category': result.category.name.toUpperCase(),
+      'confidence': double.parse(result.confidence.toStringAsFixed(2)),
+      'latitude': location?.latitude,
+      'longitude': location?.longitude,
+      'location_confirmed': locationConfirmed,
+      'timestamp': timestamp.toUtc().toIso8601String(),
+    };
+    return jsonEncode(map);
+  }
+
+  /// Strict 140-char GSM SMS Anchor representation for 2G out-of-band witness
+  String toGsmSmsPayload() {
+    final shortId = testId.replaceAll('TEST-', '').replaceAll('NDPS-', '');
+    final hashPrefix = recordHash.length > 32 ? recordHash.substring(0, 32) : recordHash;
+    final resCode = result.category == ResultCategory.positive
+        ? 'POS'
+        : (result.category == ResultCategory.negative ? 'NEG' : 'INC');
+    final gpsStr = (location != null && locationConfirmed)
+        ? '${location!.latitude.toStringAsFixed(3)},${location!.longitude.toStringAsFixed(3)}'
+        : 'NOGPS';
+    return 'NCB|$shortId|$hashPrefix|${officer.badgeNumber}|$resCode|$gpsStr';
+  }
+}
+
+enum AuditAction { view, export, search, sign }
+
+class AuditLogEntry {
+  final String logId;
+  final String prevLogHash;
+  final String actorId;
+  final AuditAction action;
+  final String? targetTestId;
+  final DateTime timestamp;
+
+  AuditLogEntry({
+    required this.logId,
+    required this.prevLogHash,
+    required this.actorId,
+    required this.action,
+    this.targetTestId,
+    required this.timestamp,
+  });
+}

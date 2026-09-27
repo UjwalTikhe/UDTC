@@ -30,7 +30,7 @@ class DualSigningScreen extends StatefulWidget {
     required this.accusedPresent,
     required this.elapsedReactionSeconds,
     required this.isReactionWindowValid,
-    required this.imageAssetPath,
+    this.imageAssetPath = 'assets/field_sample_positive.png',
   });
 
   @override

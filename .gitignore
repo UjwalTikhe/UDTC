@@ -11,6 +11,8 @@ __pycache__/
 .packages
 .pub-cache/
 .pub/
+*.apk
+ncb-field-drug-testing-companion-release/
 
 # IDE files
 .vscode/
