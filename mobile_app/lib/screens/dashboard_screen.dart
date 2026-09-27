@@ -146,14 +146,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  padding: const EdgeInsets.all(4),
+                  padding: const EdgeInsets.all(3),
                   decoration: const BoxDecoration(
                     color: Colors.white,
                     shape: BoxShape.circle,
                   ),
                   child: Image.asset(
                     'assets/mha_emblem.png',
-                    height: 26,
+                    height: 28,
+                    width: 28,
                     fit: BoxFit.contain,
                     errorBuilder: (_, __, ___) => const Icon(Icons.shield, color: Colors.amberAccent, size: 20),
                   ),

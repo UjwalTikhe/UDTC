@@ -264,16 +264,16 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.08),
-                blurRadius: 8,
-                offset: const Offset(0, 3),
+                color: Colors.black.withValues(alpha: 0.1),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
               ),
             ],
           ),
           child: Image.asset(
             'assets/mha_emblem.png',
-            height: 60,
-            width: 60,
+            height: 76,
+            width: 76,
             fit: BoxFit.contain,
             errorBuilder: (_, __, ___) => const Icon(
               Icons.shield,
