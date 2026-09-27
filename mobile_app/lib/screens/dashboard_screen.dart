@@ -7,7 +7,6 @@ import '../services/staged_sync_service.dart';
 import '../services/crypto_signer_service.dart';
 import '../repositories/field_record_repository.dart';
 import 'kit_selection_screen.dart';
-import 'camera_capture_screen.dart';
 import 'history_screen.dart';
 import 'record_detail_screen.dart';
 import 'sync_status_screen.dart';
@@ -91,7 +90,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => CameraCaptureScreen(currentUser: _user),
+        builder: (_) => KitSelectionScreen(currentUser: _user),
       ),
     ).then((_) => _refreshDashboard());
   }

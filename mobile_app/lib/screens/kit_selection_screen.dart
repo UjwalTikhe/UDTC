@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import '../theme/gov_theme.dart';
 import '../models/domain_models.dart';
 import 'card_scan_screen.dart';
-import 'camera_capture_screen.dart';
 
-/// Screen 4: Kit Selection Screen
-/// Forensic selection of certified government drug testing kit (NDDK, PCDK, KDK)
-/// according to NDPS field manual testing standards.
+/// Screen 4: Kit Selection Screen (Step 1)
+/// Three selectable cards, equal width, stacked vertically:
+/// Card 1 — "NDDK" — Narcotic Drugs Detection Kit — subtitle: "Opiates, cannabis, cocaine, amphetamines"
+/// Card 2 — "PCDK" — Precursor Chemicals Detection Kit — subtitle: "Precursor chemicals used in synthesis"
+/// Card 3 — "KDK" — Ketamine Detection Kit — subtitle: "Ketamine"
+/// Each card: white surface (#FFFFFF), 16dp padding, 16dp corner radius, icon + title + subtitle, full tap target.
 class KitSelectionScreen extends StatefulWidget {
   final User currentUser;
   const KitSelectionScreen({super.key, required this.currentUser});
@@ -16,7 +18,6 @@ class KitSelectionScreen extends StatefulWidget {
 }
 
 class _KitSelectionScreenState extends State<KitSelectionScreen> {
-  KitType _selectedKit = KitType.nddk;
   final TextEditingController _batchController = TextEditingController(text: "MHA-BATCH-2026-09B");
 
   @override
@@ -25,13 +26,13 @@ class _KitSelectionScreenState extends State<KitSelectionScreen> {
     super.dispose();
   }
 
-  void _proceedToCardScan() {
+  void _onKitSelected(KitType kit) {
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => CardScanScreen(
           currentUser: widget.currentUser,
-          selectedKit: _selectedKit,
+          selectedKit: kit,
           reagentBatch: _batchController.text.trim(),
         ),
       ),
@@ -51,65 +52,65 @@ class _KitSelectionScreenState extends State<KitSelectionScreen> {
           children: [
             const GovHeaderBanner(
               titleText: "MINISTRY OF HOME AFFAIRS",
-              subtitleText: "STEP 1 OF 6: REAGENT ASSAY SPECIFICATION",
+              subtitleText: "STEP 1 OF 6: SELECT REAGENT ASSAY KIT",
             ),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.all(GovTheme.space16),
                 children: [
                   const Text(
-                    "Reagent Kit Selection",
+                    "Kit Selection",
                     style: GovTheme.title,
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    "Select the authorized reagent assay matching the suspected substance.",
+                    "Select authorized reagent kit to initiate reference card validation and test sequence.",
                     style: GovTheme.caption,
                   ),
                   const SizedBox(height: GovTheme.space16),
 
-                  // Option 1: NDDK
-                  _buildKitCard(
-                    type: KitType.nddk,
-                    title: "NDDK — General Narcotics Assay",
-                    reagents: "Marquis Reagent (Formaldehyde + Sulfuric Acid)",
-                    target: "Opium, Morphine, Heroin, Codeine",
-                    reactionTime: "45 Seconds",
-                    colorShift: "Expected Positive: Deep Purple / Violet",
+                  // Card 1: NDDK
+                  _buildStackedKitCard(
+                    kit: KitType.nddk,
+                    title: "NDDK",
+                    fullName: "Narcotic Drugs Detection Kit",
+                    subtitle: "Opiates, cannabis, cocaine, amphetamines",
+                    reagentDetail: "Marquis primary reagent • 45s kinetic timer",
                     icon: Icons.science,
+                    iconBgColor: const Color(0xFF5B1647),
                   ),
-                  const SizedBox(height: GovTheme.space12),
+                  const SizedBox(height: GovTheme.space16),
 
-                  // Option 2: PCDK
-                  _buildKitCard(
-                    type: KitType.pcdk,
-                    title: "PCDK — Plant Cannabinoid Assay",
-                    reagents: "Duquenois-Levine Reagent (Vanillin + Acetaldehyde)",
-                    target: "Cannabis, Hashish, Charas, Ganja",
-                    reactionTime: "60 Seconds",
-                    colorShift: "Expected Positive: Indigo-Blue / Violet in Chloroform",
-                    icon: Icons.grass,
-                  ),
-                  const SizedBox(height: GovTheme.space12),
-
-                  // Option 3: KDK
-                  _buildKitCard(
-                    type: KitType.kdk,
-                    title: "KDK — Cocaine & Stimulants Assay",
-                    reagents: "Scott Reagent (Cobalt Thiocyanate + Glycerin)",
-                    target: "Cocaine HCl, Crack, Methamphetamine",
-                    reactionTime: "30 Seconds",
-                    colorShift: "Expected Positive: Cobalt Blue Precipitate",
+                  // Card 2: PCDK
+                  _buildStackedKitCard(
+                    kit: KitType.pcdk,
+                    title: "PCDK",
+                    fullName: "Precursor Chemicals Detection Kit",
+                    subtitle: "Precursor chemicals used in synthesis",
+                    reagentDetail: "Duquenois-Levine reagent • 60s kinetic timer",
                     icon: Icons.biotech,
+                    iconBgColor: const Color(0xFF1E4B8F),
+                  ),
+                  const SizedBox(height: GovTheme.space16),
+
+                  // Card 3: KDK
+                  _buildStackedKitCard(
+                    kit: KitType.kdk,
+                    title: "KDK",
+                    fullName: "Ketamine Detection Kit",
+                    subtitle: "Ketamine",
+                    reagentDetail: "Scott reagent (Cobalt thiocyanate) • 30s kinetic timer",
+                    icon: Icons.grain,
+                    iconBgColor: const Color(0xFF0F3BBF),
                   ),
                   const SizedBox(height: GovTheme.space24),
 
-                  // Reagent Batch Verification Card
+                  // Reagent Lot / Batch Number Container
                   Container(
                     padding: const EdgeInsets.all(GovTheme.space16),
                     decoration: BoxDecoration(
                       color: GovTheme.bgSurface,
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(16),
                       border: Border.all(color: GovTheme.borderDefault),
                     ),
                     child: Column(
@@ -118,7 +119,7 @@ class _KitSelectionScreenState extends State<KitSelectionScreen> {
                         const Text(
                           "REAGENT LOT / BATCH NUMBER",
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 11.5,
                             fontWeight: FontWeight.w800,
                             color: GovTheme.textPrimary,
                           ),
@@ -126,13 +127,14 @@ class _KitSelectionScreenState extends State<KitSelectionScreen> {
                         const SizedBox(height: 6),
                         TextFormField(
                           controller: _batchController,
-                          style: const TextStyle(fontWeight: FontWeight.bold),
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                           decoration: InputDecoration(
                             filled: true,
                             fillColor: GovTheme.bgBase,
                             prefixIcon: const Icon(Icons.qr_code_2, color: GovTheme.primary),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                             border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(6),
+                              borderRadius: BorderRadius.circular(8),
                               borderSide: const BorderSide(color: GovTheme.borderDefault),
                             ),
                           ),
@@ -143,52 +145,12 @@ class _KitSelectionScreenState extends State<KitSelectionScreen> {
                             const Icon(Icons.verified, size: 14, color: GovTheme.alertNegativeText),
                             const SizedBox(width: 4),
                             Text(
-                              "Expiry: 2027-12-31 • Quality Control Passed",
+                              "Quality Control Passed • Expiry 2027-12-31",
                               style: GovTheme.caption.copyWith(color: GovTheme.alertNegativeText),
                             ),
                           ],
                         ),
                       ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: GovTheme.space16, vertical: 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: GovTheme.primary,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                    ),
-                    onPressed: () {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => CameraCaptureScreen(
-                            currentUser: widget.currentUser,
-                            selectedKit: _selectedKit,
-                            reagentBatch: _batchController.text.trim(),
-                          ),
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.camera_alt, color: Colors.white, size: 20),
-                    label: const Text(
-                      "LAUNCH FIELD CAMERA & GPS",
-                      style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: Colors.white),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  OutlinedButton.icon(
-                    onPressed: _proceedToCardScan,
-                    icon: const Icon(Icons.arrow_forward, size: 16),
-                    label: const Text(
-                      "Manual Card Scan Protocol (Optional)",
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
                     ),
                   ),
                 ],
@@ -200,112 +162,99 @@ class _KitSelectionScreenState extends State<KitSelectionScreen> {
     );
   }
 
-  Widget _buildKitCard({
-    required KitType type,
+  Widget _buildStackedKitCard({
+    required KitType kit,
     required String title,
-    required String reagents,
-    required String target,
-    required String reactionTime,
-    required String colorShift,
+    required String fullName,
+    required String subtitle,
+    required String reagentDetail,
     required IconData icon,
+    required Color iconBgColor,
   }) {
-    final bool isSelected = _selectedKit == type;
-
-    return InkWell(
-      onTap: () => setState(() => _selectedKit = type),
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        padding: const EdgeInsets.all(GovTheme.space16),
-        decoration: BoxDecoration(
-          color: isSelected ? GovTheme.bgSurface : GovTheme.bgBase,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: isSelected ? GovTheme.primary : GovTheme.borderDefault,
-            width: isSelected ? 2 : 1,
+    return Material(
+      color: const Color(0xFFFFFFFF), // White surface
+      borderRadius: BorderRadius.circular(16), // 16dp corner radius
+      elevation: 2,
+      shadowColor: Colors.black.withValues(alpha: 0.06),
+      child: InkWell(
+        onTap: () => _onKitSelected(kit), // Full tap target on whole card
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.all(GovTheme.space16), // 16dp padding
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: GovTheme.borderDefault, width: 1.2),
           ),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: GovTheme.primary.withOpacity(0.08),
-                    blurRadius: 8,
-                    offset: const Offset(0, 3),
-                  )
-                ]
-              : null,
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: isSelected ? GovTheme.primary : GovTheme.borderDefault.withOpacity(0.5),
-                borderRadius: BorderRadius.circular(6),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Icon Badge with 48dp touch target clearance
+              Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  color: iconBgColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: iconBgColor, size: 28),
               ),
-              child: Icon(
-                icon,
-                color: isSelected ? Colors.white : GovTheme.textSecondary,
-                size: 24,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
+              const SizedBox(width: 14),
+              // Title + Full Name + Subtitle
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
                           title,
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800,
-                            color: isSelected ? GovTheme.primary : GovTheme.textPrimary,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w900,
+                            color: GovTheme.ashokaNavy,
+                            letterSpacing: 0.5,
                           ),
                         ),
-                      ),
-                      Radio<KitType>(
-                        value: type,
-                        groupValue: _selectedKit,
-                        activeColor: GovTheme.primary,
-                        onChanged: (val) {
-                          if (val != null) setState(() => _selectedKit = val);
-                        },
-                      ),
-                    ],
-                  ),
-                  Text("Reagent: $reagents", style: GovTheme.caption),
-                  const SizedBox(height: 4),
-                  Text("Target: $target", style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: GovTheme.primary.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(4),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            "($fullName)",
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: GovTheme.textSecondary,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
-                        child: Text(
-                          "Timer: $reactionTime",
-                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: GovTheme.primary),
-                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: GovTheme.textPrimary,
                       ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          colorShift,
-                          style: const TextStyle(fontSize: 11, color: GovTheme.textSecondary, fontStyle: FontStyle.italic),
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      reagentDetail,
+                      style: const TextStyle(
+                        fontSize: 10.5,
+                        color: GovTheme.textSecondary,
+                        fontStyle: FontStyle.italic,
                       ),
-                    ],
-                  ),
-                ],
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+              const SizedBox(width: 8),
+              // Chevron indicator
+              const Icon(Icons.arrow_forward_ios, size: 16, color: GovTheme.primary),
+            ],
+          ),
         ),
       ),
     );

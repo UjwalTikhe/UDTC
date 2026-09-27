@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 /// SIH26231 — Domain Model Specification (Section 2)
 /// Flat composition models for field drug testing compliance
@@ -273,6 +274,30 @@ class CapturedFrame {
     required this.laplacianVariance,
     required this.exposureScore,
     required this.arucoDetected,
+  });
+}
+
+class CaptureResult {
+  final List<CapturedFrame> burstFrames;
+  final File capturedImageFile;
+  final GeoPoint? location;
+  final bool locationConfirmed;
+  final KitType kitType;
+  final String cardSerial;
+  final String reagentBatch;
+  final DateTime reactionTimestamp;
+  final bool accusedPresent;
+
+  CaptureResult({
+    this.burstFrames = const [],
+    required this.capturedImageFile,
+    this.location,
+    required this.locationConfirmed,
+    required this.kitType,
+    required this.cardSerial,
+    required this.reagentBatch,
+    required this.reactionTimestamp,
+    this.accusedPresent = true,
   });
 }
 

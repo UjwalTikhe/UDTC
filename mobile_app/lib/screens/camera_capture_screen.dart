@@ -1,12 +1,15 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
+import 'package:path_provider/path_provider.dart';
 import 'package:camera/camera.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../theme/gov_theme.dart';
 import '../models/domain_models.dart';
 import '../services/forensic_watermark_service.dart';
+import '../services/optical_processing_service.dart';
 import 'processing_screen.dart';
 
 /// Screen 7: Field Drug Testing Camera & Real-Time GPS Geolocation Screen
@@ -18,6 +21,8 @@ class CameraCaptureScreen extends StatefulWidget {
   final KitType selectedKit;
   final String reagentBatch;
   final String cardSerial;
+  final int reagentStep;
+  final OpticalAnalysisOutput? primaryStepOutput;
 
   const CameraCaptureScreen({
     super.key,
@@ -25,6 +30,8 @@ class CameraCaptureScreen extends StatefulWidget {
     this.selectedKit = KitType.nddk,
     this.reagentBatch = "MHA-BATCH-2026-09B",
     this.cardSerial = "MHACARD-2026-DEL-0491",
+    this.reagentStep = 1,
+    this.primaryStepOutput,
   });
 
   @override
@@ -51,8 +58,18 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
 
   // Capture State & Quality
   bool _isCapturing = false;
-  String _sampleType = 'positive'; // Default forensic sample evaluation mode
   bool _accusedPresent = true;
+  File? _chosenTestSampleFile;
+
+  Future<File> _loadAssetToFile(String assetPath, String filename) async {
+    final byteData = await rootBundle.load(assetPath);
+    final tempDir = await getTemporaryDirectory();
+    final file = File('${tempDir.path}/$filename');
+    await file.writeAsBytes(
+      byteData.buffer.asUint8List(byteData.offsetInBytes, byteData.lengthInBytes),
+    );
+    return file;
+  }
 
   @override
   void initState() {
@@ -239,7 +256,7 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
     }
   }
 
-  Future<void> _handleCaptureShutter() async {
+  Future<void> _handleCaptureShutter({File? overrideFile}) async {
     if (_isCapturing) return;
 
     setState(() => _isCapturing = true);
@@ -247,13 +264,17 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
     try {
       File rawPhotoFile;
 
-      // 1. Take photograph from device camera hardware
-      if (_cameraController != null && _cameraController!.value.isInitialized) {
+      // 1. Take photograph from device camera hardware or test asset
+      if (overrideFile != null) {
+        rawPhotoFile = overrideFile;
+      } else if (_chosenTestSampleFile != null) {
+        rawPhotoFile = _chosenTestSampleFile!;
+      } else if (_cameraController != null && _cameraController!.value.isInitialized) {
         final XFile photo = await _cameraController!.takePicture();
         rawPhotoFile = File(photo.path);
       } else {
         // Fallback for emulator / non-camera hardware test
-        rawPhotoFile = File("assets/field_sample_positive.png");
+        rawPhotoFile = await _loadAssetToFile("assets/field_sample_positive.png", "field_sample_positive.png");
       }
 
       // 2. Capture instantaneous GPS coordinates
@@ -571,19 +592,24 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
                                   ),
                                   onPressed: () {
                                     Navigator.pop(ctx); // Close sheet
+                                    final captureResult = CaptureResult(
+                                      capturedImageFile: watermarkedFile,
+                                      location: geoPoint,
+                                      locationConfirmed: locationConfirmed,
+                                      kitType: _activeKit,
+                                      cardSerial: widget.cardSerial,
+                                      reagentBatch: widget.reagentBatch,
+                                      reactionTimestamp: DateTime.now(),
+                                      accusedPresent: _accusedPresent,
+                                    );
                                     Navigator.pushReplacement(
                                       context,
                                       MaterialPageRoute(
                                         builder: (_) => ProcessingScreen(
                                           currentUser: widget.currentUser,
-                                          selectedKit: _activeKit,
-                                          reagentBatch: widget.reagentBatch,
-                                          cardSerial: widget.cardSerial,
-                                          sampleType: _sampleType,
-                                          location: geoPoint,
-                                          locationConfirmed: locationConfirmed,
-                                          laplacianVariance: 128.5,
-                                          capturedImageFile: watermarkedFile,
+                                          captureResult: captureResult,
+                                          reagentStep: widget.reagentStep,
+                                          primaryStepOutput: widget.primaryStepOutput,
                                         ),
                                       ),
                                     );
@@ -857,23 +883,33 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
             tooltip: "Switch Camera",
             onPressed: _flipCamera,
           ),
-          // Simulation Selector
+          // Reference Evidence Photo Selector (for field evaluation and testing)
           PopupMenuButton<String>(
-            icon: const Icon(Icons.tune, color: Colors.white70, size: 20),
-            tooltip: "Reaction Simulation",
-            onSelected: (val) => setState(() => _sampleType = val),
+            icon: const Icon(Icons.photo_library_outlined, color: Colors.white70, size: 20),
+            tooltip: "Load Evidence Sample Photo",
+            onSelected: (val) async {
+              File loaded;
+              if (val == 'positive') {
+                loaded = await _loadAssetToFile('assets/field_sample_positive.png', 'positive_sample.png');
+              } else if (val == 'negative') {
+                loaded = await _loadAssetToFile('assets/field_sample_negative.png', 'negative_sample.png');
+              } else {
+                loaded = await _loadAssetToFile('assets/field_sample_blurry.png', 'blurry_sample.png');
+              }
+              _handleCaptureShutter(overrideFile: loaded);
+            },
             itemBuilder: (_) => const [
               PopupMenuItem(
                 value: 'positive',
-                child: Text("Simulate Positive (Target Detected)"),
+                child: Text("Load Positive Evidence Photo (Marquis Purple)"),
               ),
               PopupMenuItem(
                 value: 'negative',
-                child: Text("Simulate Negative (Clear)"),
+                child: Text("Load Negative Evidence Photo (Unreacted Amber)"),
               ),
               PopupMenuItem(
-                value: 'inconclusive',
-                child: Text("Simulate Inconclusive (Retest Needed)"),
+                value: 'blurry',
+                child: Text("Load Degraded / Blurry Photo"),
               ),
             ],
           ),
@@ -1190,19 +1226,57 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
                 style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
               ),
             ),
-            const SizedBox(height: 10),
-            // Fallback for emulator / desktop testing
-            OutlinedButton.icon(
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.amberAccent,
-                side: const BorderSide(color: Colors.amberAccent),
-              ),
-              onPressed: _handleCaptureShutter,
-              icon: const Icon(Icons.camera, size: 16),
-              label: const Text(
-                "CAPTURE TEST SAMPLE",
-                style: TextStyle(fontSize: 11),
-              ),
+            const SizedBox(height: 12),
+            const Text(
+              "Or analyze real field reference photos:",
+              style: TextStyle(color: Colors.white60, fontSize: 11),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              alignment: WrapAlignment.center,
+              children: [
+                OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.greenAccent,
+                    side: const BorderSide(color: Colors.greenAccent),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  ),
+                  onPressed: () async {
+                    final f = await _loadAssetToFile('assets/field_sample_positive.png', 'positive_sample.png');
+                    _handleCaptureShutter(overrideFile: f);
+                  },
+                  icon: const Icon(Icons.check_circle_outline, size: 15),
+                  label: const Text("TEST POSITIVE SAMPLE", style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold)),
+                ),
+                OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.lightBlueAccent,
+                    side: const BorderSide(color: Colors.lightBlueAccent),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  ),
+                  onPressed: () async {
+                    final f = await _loadAssetToFile('assets/field_sample_negative.png', 'negative_sample.png');
+                    _handleCaptureShutter(overrideFile: f);
+                  },
+                  icon: const Icon(Icons.remove_circle_outline, size: 15),
+                  label: const Text("TEST NEGATIVE SAMPLE", style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold)),
+                ),
+                OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.amberAccent,
+                    side: const BorderSide(color: Colors.amberAccent),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  ),
+                  onPressed: () async {
+                    final f = await _loadAssetToFile('assets/field_sample_blurry.png', 'blurry_sample.png');
+                    _handleCaptureShutter(overrideFile: f);
+                  },
+                  icon: const Icon(Icons.blur_on, size: 15),
+                  label: const Text("TEST BLURRY SAMPLE", style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold)),
+                ),
+              ],
             ),
           ],
         ),
