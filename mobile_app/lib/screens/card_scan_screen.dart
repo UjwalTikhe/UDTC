@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:camera/camera.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../theme/gov_theme.dart';
 import '../models/domain_models.dart';
 import 'reaction_timer_screen.dart';
@@ -24,6 +26,9 @@ class CardScanScreen extends StatefulWidget {
 }
 
 class _CardScanScreenState extends State<CardScanScreen> {
+  CameraController? _cameraController;
+  bool _isCameraInitialized = false;
+  String? _cameraError;
   bool _isTorchOn = false;
   bool _isScanning = true;
   String? _detectedSerial;
@@ -37,6 +42,7 @@ class _CardScanScreenState extends State<CardScanScreen> {
   @override
   void initState() {
     super.initState();
+    _initCamera();
     // 3-second torch reminder if not detected
     _torchHintTimer = Timer(const Duration(seconds: 3), () {
       if (mounted && _detectedSerial == null && _mismatchError == null) {
@@ -45,9 +51,63 @@ class _CardScanScreenState extends State<CardScanScreen> {
     });
   }
 
+  Future<void> _initCamera() async {
+    try {
+      var status = await Permission.camera.status;
+      if (!status.isGranted) {
+        status = await Permission.camera.request();
+      }
+      if (!status.isGranted) {
+        if (mounted) {
+          setState(() {
+            _cameraError = "Camera permission required to scan reference card.";
+          });
+        }
+        return;
+      }
+
+      final cameras = await availableCameras();
+      if (cameras.isEmpty) {
+        if (mounted) setState(() => _cameraError = "No camera hardware detected.");
+        return;
+      }
+
+      int defaultIdx = cameras.indexWhere((c) => c.lensDirection == CameraLensDirection.back);
+      if (defaultIdx < 0) defaultIdx = 0;
+
+      final controller = CameraController(
+        cameras[defaultIdx],
+        ResolutionPreset.medium,
+        enableAudio: false,
+      );
+      _cameraController = controller;
+      await controller.initialize();
+      if (!mounted) return;
+      setState(() {
+        _isCameraInitialized = true;
+        _cameraError = null;
+      });
+    } catch (e) {
+      if (mounted) {
+        setState(() => _cameraError = "Camera init error: $e");
+      }
+    }
+  }
+
+  Future<void> _toggleTorch() async {
+    if (_cameraController != null && _cameraController!.value.isInitialized) {
+      try {
+        final newMode = _isTorchOn ? FlashMode.off : FlashMode.torch;
+        await _cameraController!.setFlashMode(newMode);
+      } catch (_) {}
+    }
+    setState(() => _isTorchOn = !_isTorchOn);
+  }
+
   @override
   void dispose() {
     _torchHintTimer?.cancel();
+    _cameraController?.dispose();
     super.dispose();
   }
 
@@ -149,9 +209,7 @@ class _CardScanScreenState extends State<CardScanScreen> {
           IconButton(
             icon: Icon(_isTorchOn ? Icons.flash_on : Icons.flash_off, color: Colors.amberAccent),
             tooltip: "Toggle Flashlight",
-            onPressed: () {
-              setState(() => _isTorchOn = !_isTorchOn);
-            },
+            onPressed: _toggleTorch,
           ),
         ],
       ),
@@ -166,39 +224,104 @@ class _CardScanScreenState extends State<CardScanScreen> {
               child: Stack(
                 alignment: Alignment.center,
                 children: [
-                  // Camera / Viewfinder Simulation Area
-                  Container(
-                    color: const Color(0xFF1E293B),
-                    child: Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.qr_code_scanner,
-                            size: 150,
-                            color: Colors.white.withValues(alpha: 0.3),
+                  // Live Camera Viewfinder or Fallback
+                  if (_isCameraInitialized && _cameraController != null && _cameraController!.value.isInitialized)
+                    Positioned.fill(
+                      child: ClipRect(
+                        child: FittedBox(
+                          fit: BoxFit.cover,
+                          child: SizedBox(
+                            width: _cameraController!.value.previewSize?.height ?? 720,
+                            height: _cameraController!.value.previewSize?.width ?? 1280,
+                            child: CameraPreview(_cameraController!),
                           ),
-                          const SizedBox(height: 16),
-                          Text(
-                            "Scanning Reference Card for Kit: $activeKitName",
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.8),
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                            ),
+                        ),
+                      ),
+                    )
+                  else if (_cameraError != null)
+                    Positioned.fill(
+                      child: Container(
+                        color: const Color(0xFF1E293B),
+                        padding: const EdgeInsets.all(20),
+                        child: Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.videocam_off, color: Colors.amberAccent, size: 48),
+                              const SizedBox(height: 12),
+                              Text(
+                                _cameraError!,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(color: Colors.white, fontSize: 12),
+                              ),
+                              const SizedBox(height: 14),
+                              ElevatedButton.icon(
+                                onPressed: openAppSettings,
+                                icon: const Icon(Icons.settings, size: 16),
+                                label: const Text("OPEN SETTINGS", style: TextStyle(fontSize: 11)),
+                                style: ElevatedButton.styleFrom(backgroundColor: GovTheme.primary),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            "Hold card flat under illumination • 3-frame debounce active",
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.5),
-                              fontSize: 11,
-                            ),
+                        ),
+                      ),
+                    )
+                  else
+                    Positioned.fill(
+                      child: Container(
+                        color: Colors.black,
+                        child: const Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              CircularProgressIndicator(color: GovTheme.primary),
+                              SizedBox(height: 12),
+                              Text(
+                                "Starting Camera Hardware Sensor...",
+                                style: TextStyle(color: Colors.white70, fontSize: 11),
+                              ),
+                            ],
                           ),
-                        ],
+                        ),
                       ),
                     ),
-                  ),
+
+                  // Live Camera Active Badge
+                  if (_isCameraInitialized && _cameraController != null && _cameraController!.value.isInitialized)
+                    Positioned(
+                      top: 12,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.65),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.greenAccent, width: 1),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 7,
+                              height: 7,
+                              decoration: const BoxDecoration(
+                                color: Colors.greenAccent,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            const Text(
+                              "LIVE CAMERA ACTIVE",
+                              style: TextStyle(
+                                color: Colors.greenAccent,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
 
                   // Viewfinder Reticle Overlay
                   Container(

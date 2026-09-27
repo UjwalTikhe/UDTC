@@ -102,28 +102,38 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
   }
 
   Future<void> _initializeHardware() async {
-    // 1. Initialize GPS Sensor
-    _startGpsAcquisition();
-
-    // 2. Initialize Camera Sensor
+    // 1. Initialize Camera FIRST and await it completely
     await _initCameraHardware();
+
+    // 2. Start GPS acquisition only AFTER camera is ready (prevents Android permission dialog clash)
+    if (mounted) {
+      await Future.delayed(const Duration(milliseconds: 400));
+      if (mounted) {
+        _startGpsAcquisition();
+      }
+    }
   }
 
   Future<void> _initCameraHardware() async {
-    // Request runtime camera permission
-    final cameraStatus = await Permission.camera.request();
-    if (!cameraStatus.isGranted) {
-      setState(() {
-        _cameraError =
-            "Camera permission is required to photograph chemical field test results.\n"
-            "Please grant camera access in app settings.";
-      });
-      return;
-    }
-
     try {
+      var cameraStatus = await Permission.camera.status;
+      if (!cameraStatus.isGranted) {
+        cameraStatus = await Permission.camera.request();
+      }
+
+      if (!cameraStatus.isGranted) {
+        if (!mounted) return;
+        setState(() {
+          _cameraError = cameraStatus.isPermanentlyDenied
+              ? "Camera permission is permanently denied in Android settings.\nPlease tap 'OPEN APP SETTINGS' below to allow camera access."
+              : "Camera permission is required to photograph chemical field test results.\nPlease grant Camera permission to continue.";
+        });
+        return;
+      }
+
       _cameras = await availableCameras();
       if (_cameras.isEmpty) {
+        if (!mounted) return;
         setState(() {
           _cameraError = "No camera hardware detected on this device.";
         });
@@ -139,6 +149,7 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
 
       await _initCameraController(_cameras[_selectedCameraIndex]);
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _cameraError = "Camera sensor initialization error: $e";
       });
@@ -146,26 +157,72 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
   }
 
   Future<void> _initCameraController(CameraDescription description) async {
-    final controller = CameraController(
-      description,
-      ResolutionPreset.high,
-      enableAudio: false,
-      imageFormatGroup: ImageFormatGroup.jpeg,
-    );
+    await _cameraController?.dispose();
 
-    _cameraController = controller;
-
+    // 1. First attempt: ResolutionPreset.high
     try {
+      final controller = CameraController(
+        description,
+        ResolutionPreset.high,
+        enableAudio: false,
+      );
+      _cameraController = controller;
       await controller.initialize();
+      try {
+        await controller.setFocusMode(FocusMode.auto);
+        await controller.setExposureMode(ExposureMode.auto);
+      } catch (_) {}
       if (!mounted) return;
       setState(() {
         _isCameraInitialized = true;
         _cameraError = null;
       });
+      return;
     } catch (e) {
+      debugPrint("High resolution init failed, falling back to medium: $e");
+    }
+
+    // 2. Fallback: ResolutionPreset.medium (supported on 100% of Android devices)
+    try {
+      final fallbackController = CameraController(
+        description,
+        ResolutionPreset.medium,
+        enableAudio: false,
+      );
+      _cameraController = fallbackController;
+      await fallbackController.initialize();
+      try {
+        await fallbackController.setFocusMode(FocusMode.auto);
+        await fallbackController.setExposureMode(ExposureMode.auto);
+      } catch (_) {}
       if (!mounted) return;
       setState(() {
-        _cameraError = "Failed to open camera: $e";
+        _isCameraInitialized = true;
+        _cameraError = null;
+      });
+      return;
+    } catch (fallbackError) {
+      debugPrint("Medium resolution init failed, falling back to low: $fallbackError");
+    }
+
+    // 3. Fallback: ResolutionPreset.low
+    try {
+      final lowController = CameraController(
+        description,
+        ResolutionPreset.low,
+        enableAudio: false,
+      );
+      _cameraController = lowController;
+      await lowController.initialize();
+      if (!mounted) return;
+      setState(() {
+        _isCameraInitialized = true;
+        _cameraError = null;
+      });
+    } catch (lowError) {
+      if (!mounted) return;
+      setState(() {
+        _cameraError = "Failed to open camera hardware: $lowError\nPlease tap OPEN APP SETTINGS or restart.";
       });
     }
   }
@@ -259,12 +316,33 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
   Future<void> _handleCaptureShutter({File? overrideFile}) async {
     if (_isCapturing) return;
 
+    if (overrideFile == null && _chosenTestSampleFile == null) {
+      if (_cameraController == null || !_cameraController!.value.isInitialized) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              "Camera hardware not ready. Please check camera permissions in Settings.",
+              style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+            ),
+            backgroundColor: GovTheme.alertPositiveText,
+            action: SnackBarAction(
+              label: "SETTINGS",
+              textColor: Colors.white,
+              onPressed: openAppSettings,
+            ),
+            duration: const Duration(seconds: 4),
+          ),
+        );
+        return;
+      }
+    }
+
     setState(() => _isCapturing = true);
 
     try {
       File rawPhotoFile;
 
-      // 1. Take photograph from device camera hardware or test asset
+      // 1. Take photograph from device camera hardware or test override
       if (overrideFile != null) {
         rawPhotoFile = overrideFile;
       } else if (_chosenTestSampleFile != null) {
@@ -273,8 +351,8 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
         final XFile photo = await _cameraController!.takePicture();
         rawPhotoFile = File(photo.path);
       } else {
-        // Fallback for emulator / non-camera hardware test
-        rawPhotoFile = await _loadAssetToFile("assets/field_sample_positive.png", "field_sample_positive.png");
+        setState(() => _isCapturing = false);
+        return;
       }
 
       // 2. Capture instantaneous GPS coordinates
@@ -699,22 +777,75 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
                 alignment: Alignment.center,
                 children: [
                   // Camera Sensor Stream
-                  if (_isCameraInitialized && _cameraController != null)
+                  if (_isCameraInitialized && _cameraController != null && _cameraController!.value.isInitialized)
                     Positioned.fill(
-                      child: FittedBox(
-                        fit: BoxFit.cover,
-                        child: SizedBox(
-                          width: _cameraController!.value.previewSize?.height ?? 720,
-                          height: _cameraController!.value.previewSize?.width ?? 1280,
-                          child: CameraPreview(_cameraController!),
+                      child: ClipRect(
+                        child: FittedBox(
+                          fit: BoxFit.cover,
+                          child: SizedBox(
+                            width: _cameraController!.value.previewSize != null
+                                ? _cameraController!.value.previewSize!.height
+                                : 720,
+                            height: _cameraController!.value.previewSize != null
+                                ? _cameraController!.value.previewSize!.width
+                                : 1280,
+                            child: CameraPreview(_cameraController!),
+                          ),
                         ),
                       ),
                     )
                   else if (_cameraError != null)
-                    _buildCameraErrorView()
+                    Positioned.fill(child: _buildCameraErrorView())
                   else
                     const Center(
-                      child: CircularProgressIndicator(color: GovTheme.primary),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          CircularProgressIndicator(color: GovTheme.primary),
+                          SizedBox(height: 12),
+                          Text(
+                            "Starting Hardware Camera Sensor...",
+                            style: TextStyle(color: Colors.white70, fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                  // Prominent Live Camera Badge
+                  if (_isCameraInitialized && _cameraController != null && _cameraController!.value.isInitialized)
+                    Positioned(
+                      top: 12,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.7),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.greenAccent, width: 1.2),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: const BoxDecoration(
+                                color: Colors.greenAccent,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            const Text(
+                              "LIVE CAMERA ACTIVE",
+                              style: TextStyle(
+                                color: Colors.greenAccent,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 0.8,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
 
                   // ArUco Reference Card Alignment Reticle
@@ -1121,7 +1252,7 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
             ],
           ),
 
-          // Center: Always-Enabled 72dp Shutter Button
+          // Center: Shutter Button with Camera State Feedback
           GestureDetector(
             onTap: _isCapturing ? null : _handleCaptureShutter,
             child: Container(
@@ -1130,10 +1261,17 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: Colors.white,
-                border: Border.all(color: GovTheme.alertNegativeText, width: 4),
+                border: Border.all(
+                  color: (_isCameraInitialized && _cameraController != null && _cameraController!.value.isInitialized)
+                      ? GovTheme.alertNegativeText
+                      : Colors.grey.shade400,
+                  width: 4,
+                ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.greenAccent.withValues(alpha: 0.4),
+                    color: (_isCameraInitialized && _cameraController != null && _cameraController!.value.isInitialized)
+                        ? Colors.greenAccent.withValues(alpha: 0.4)
+                        : Colors.black26,
                     blurRadius: 16,
                     spreadRadius: 3,
                   ),
@@ -1152,9 +1290,11 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
                     : Container(
                         width: 58,
                         height: 58,
-                        decoration: const BoxDecoration(
+                        decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: GovTheme.primary,
+                          color: (_isCameraInitialized && _cameraController != null && _cameraController!.value.isInitialized)
+                              ? GovTheme.primary
+                              : Colors.grey.shade600,
                         ),
                         child: const Icon(
                           Icons.camera_alt,
@@ -1199,39 +1339,55 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
       color: const Color(0xFF111827),
       padding: const EdgeInsets.all(24),
       child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              Icons.videocam_off,
-              color: GovTheme.alertPositiveText,
-              size: 52,
-            ),
-            const SizedBox(height: 14),
-            Text(
-              _cameraError ?? "Camera unavailable",
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.white, fontSize: 13, height: 1.4),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: GovTheme.primary,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.videocam_off,
+                color: GovTheme.alertPositiveText,
+                size: 52,
               ),
-              onPressed: _initializeHardware,
-              icon: const Icon(Icons.refresh, size: 18),
-              label: const Text(
-                "RETRY CAMERA SENSOR",
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              const SizedBox(height: 14),
+              Text(
+                _cameraError ?? "Camera hardware unavailable",
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.white, fontSize: 13, height: 1.4),
               ),
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              "Or analyze real field reference photos:",
-              style: TextStyle(color: Colors.white60, fontSize: 11),
-            ),
-            const SizedBox(height: 8),
+              const SizedBox(height: 18),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: GovTheme.primary,
+                  minimumSize: const Size(220, 48),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                ),
+                onPressed: openAppSettings,
+                icon: const Icon(Icons.settings, size: 20, color: Colors.white),
+                label: const Text(
+                  "OPEN APP SETTINGS",
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                ),
+              ),
+              const SizedBox(height: 10),
+              OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Colors.white70),
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(220, 44),
+                ),
+                onPressed: _initializeHardware,
+                icon: const Icon(Icons.refresh, size: 18),
+                label: const Text(
+                  "RETRY CAMERA SENSOR",
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                ),
+              ),
+              const SizedBox(height: 18),
+              const Text(
+                "Or evaluate with reference evidence photos:",
+                style: TextStyle(color: Colors.white60, fontSize: 11),
+              ),
+              const SizedBox(height: 8),
             Wrap(
               spacing: 8,
               runSpacing: 8,
@@ -1281,6 +1437,7 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
           ],
         ),
       ),
-    );
+    ),
+  );
   }
 }

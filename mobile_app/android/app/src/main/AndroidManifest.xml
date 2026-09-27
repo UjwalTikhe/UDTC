@@ -4,8 +4,9 @@
     <!-- Section 8.1 Runtime Permissions for Field Drug Testing Companion -->
     <!-- Core capture and live ArUco gating -->
     <uses-permission android:name="android.permission.CAMERA" />
-    <uses-feature android:name="android.hardware.camera" android:required="true" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
+    <uses-feature android:name="android.hardware.camera.front" android:required="false" />
 
     <!-- Geotagging under NDPS Section 52A & Section 4.5 -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
