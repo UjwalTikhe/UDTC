@@ -9,7 +9,7 @@ dependencies:
   flutter:
     sdk: flutter
   camera: ^0.10.5+9
-  sqflite: ^2.3.2
+  sqflite_sqlcipher: ^3.1.0+1
   path: ^1.9.0
   crypto: ^3.0.3
   pointycastle: ^3.7.3
@@ -20,6 +20,9 @@ dependencies:
   permission_handler: ^11.3.1
   path_provider: ^2.1.6
   image: ^4.10.1
+  connectivity_plus: ^6.1.0
+  pdf: ^3.11.1
+  printing: ^5.13.4
 
 dev_dependencies:
   flutter_test:

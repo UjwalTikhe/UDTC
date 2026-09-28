@@ -22,10 +22,8 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   late TabController _tabController;
 
   // Sign In Controllers
-  final TextEditingController _loginEmailController =
-      TextEditingController(text: "ujwal.tikhe@mha.gov.in");
-  final TextEditingController _loginPasswordController =
-      TextEditingController(text: "Officer@123");
+  final TextEditingController _loginEmailController = TextEditingController();
+  final TextEditingController _loginPasswordController = TextEditingController();
   bool _obscureLoginPassword = true;
 
   // Sign Up Controllers (Strictly Email & Password only)
@@ -47,10 +45,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   }
 
   Future<void> _initDatabase() async {
-    try {
-      await _db.seedDefaultUsersIfEmpty();
-      await _db.seedDepartmentRegistryIfEmpty();
-    } catch (_) {}
+    await _db.database;
   }
 
   @override

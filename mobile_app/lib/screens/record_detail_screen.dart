@@ -6,6 +6,7 @@ import '../theme/gov_theme.dart';
 import '../models/record_model.dart';
 import '../services/staged_sync_service.dart';
 import '../services/sms_anchor_service.dart';
+import '../services/panchanama_pdf_service.dart';
 
 /// Screen 12: Record Detail Screen (Officer & Supervisor)
 /// Comprehensive evidentiary record audit view: optical metrics, cryptographic signatures,
@@ -143,14 +144,16 @@ class _RecordDetailScreenState extends State<RecordDetailScreen> {
           ),
           ElevatedButton.icon(
             style: ElevatedButton.styleFrom(backgroundColor: GovTheme.primary),
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text("Section 63 BSA Forensic PDF Certificate exported to device storage."),
-                  backgroundColor: GovTheme.primary,
-                ),
-              );
+              try {
+                await PanchanamaPdfService.export(_currentRecord, evidencePhoto: _evidencePhoto);
+              } catch (e) {
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text("PDF export failed: $e"), backgroundColor: GovTheme.alertPositiveText),
+                );
+              }
             },
             icon: const Icon(Icons.download, size: 16, color: Colors.white),
             label: const Text("EXPORT PDF", style: TextStyle(color: Colors.white, fontSize: 12)),

@@ -3,6 +3,7 @@ import 'dart:math';
 import 'dart:typed_data';
 import 'package:crypto/crypto.dart';
 import 'package:pointycastle/export.dart';
+import 'package:flutter/services.dart';
 
 class DualSignatureResult {
   final String deviceSigHex;
@@ -20,6 +21,7 @@ class DualSignatureResult {
 
 class CryptoSignerService {
   static final CryptoSignerService instance = CryptoSignerService._internal();
+  static const MethodChannel _keystoreChannel = MethodChannel('in.gov.mha/keystore');
 
   CryptoSignerService._internal();
 
@@ -37,11 +39,22 @@ class CryptoSignerService {
     _currentOfficerId = officerId;
   }
 
-  String signWithDeviceHardware(String payload) => signWithDeviceHardwareKey(payload);
+  Future<String> signWithDeviceHardware(String payload) async {
+    final signature = await _keystoreChannel.invokeMethod<String>('signPayload', {
+      'payload': payload,
+    });
+    if (signature == null || signature.isEmpty) {
+      throw StateError('Android Keystore did not return a device signature.');
+    }
+    return signature;
+  }
 
   String signWithOfficerKey(String payload) {
+    if (_derivedOfficerPin == null || _derivedOfficerPin!.isEmpty) {
+      throw StateError('Officer authentication is required before signing.');
+    }
     return signWithOfficerPin(
-      officerPin: _derivedOfficerPin ?? "982341",
+      officerPin: _derivedOfficerPin!,
       officerId: _currentOfficerId,
       payloadToSign: payload,
     );
@@ -93,7 +106,7 @@ class CryptoSignerService {
     required String officerPin,
     required String officerId,
     required String payloadToSign,
-  }) {
+  }) async {
     // 1. Derive 256-bit officer key using PBKDF2 (10,000 iterations)
     final pbkdf2 = KeyDerivator('SHA-256/HMAC/PBKDF2');
     final salt = utf8.encode("MHA-SALT-LEGAL:$officerId");
@@ -110,12 +123,12 @@ class CryptoSignerService {
   }
 
   /// Executes complete Section 4.3 Dual-Bound Signature on a field test
-  DualSignatureResult signDualBound({
+  Future<DualSignatureResult> signDualBound({
     required String canonicalRecordPayload,
     required String officerPin,
     required String officerId,
   }) {
-    final devSig = signWithDeviceHardwareKey(canonicalRecordPayload);
+    final devSig = await signWithDeviceHardware(canonicalRecordPayload);
     final offSig = signWithOfficerPin(
       officerPin: officerPin,
       officerId: officerId,

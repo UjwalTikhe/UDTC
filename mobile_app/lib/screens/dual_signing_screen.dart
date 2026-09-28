@@ -67,7 +67,7 @@ class _DualSigningScreenState extends State<DualSigningScreen> {
     });
   }
 
-  void _generateDualSignatures() {
+  Future<void> _generateDualSignatures() async {
     if (_pinController.text.trim().length < 4) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Please enter a valid Officer PIN (min 4 digits)"), backgroundColor: Colors.redAccent),
@@ -109,7 +109,7 @@ class _DualSigningScreenState extends State<DualSigningScreen> {
     final blockHash = LocalRecordModel.computeBlockSha256(canonicalJson, _prevHash);
 
     // 2. Execute Section 4.3 Dual-Bound Signature
-    final sigResult = _signer.signDualBound(
+    final sigResult = await _signer.signDualBound(
       canonicalRecordPayload: canonicalJson,
       officerPin: _pinController.text.trim(),
       officerId: _officerId,

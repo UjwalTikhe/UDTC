@@ -31,7 +31,8 @@ class _ApprovalQueueScreenState extends State<ApprovalQueueScreen> {
     setState(() => _isLoading = true);
     final all = await _db.getAllRecords(latestFirst: true);
     // High-stakes filter: positive records requiring supervisory co-signing
-    final positives = all.where((r) => r.classification.contains("POS")).toList();
+    final positives = all.where((r) =>
+        r.isPositive && r.isHighStakes && (r.supervisorSigHex == null || r.supervisorSigHex!.isEmpty)).toList();
 
     setState(() {
       _highStakesRecords = positives;
@@ -40,8 +41,42 @@ class _ApprovalQueueScreenState extends State<ApprovalQueueScreen> {
   }
 
   Future<void> _coSignRecord(LocalRecordModel record) async {
+    if (record.officerId == widget.currentUser.userId ||
+        record.officerId == widget.currentUser.badgeNumber) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('A supervisor cannot co-sign their own submitted test.')),
+      );
+      return;
+    }
     final signer = CryptoSignerService.instance;
-    final supervisorSig = signer.signWithDeviceHardware("SUPERVISOR_COSIGN|${record.testId}");
+    final shouldSign = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Confirm supervisory co-sign'),
+        content: Text(
+          'This will append a Section 52A authorization for ${record.testId}. '
+          'The action is permanent in the local audit chain.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('CANCEL')),
+          ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('CONFIRM')),
+        ],
+      ),
+    );
+    if (shouldSign != true) return;
+    final supervisorSig = await signer.signWithDeviceHardware(
+      "SUPERVISOR_COSIGN|${record.testId}|${record.recordHash}",
+    );
+    await _db.applySupervisorCoSign(
+      testId: record.testId,
+      supervisorId: widget.currentUser.userId,
+      supervisorSignature: supervisorSig,
+    );
+    await _db.appendAuditLog(
+      actorId: widget.currentUser.userId,
+      action: 'sign',
+      targetTestId: record.testId,
+    );
 
     if (!mounted) return;
 

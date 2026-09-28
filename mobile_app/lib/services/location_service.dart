@@ -20,14 +20,15 @@ class LocationService {
   static final LocationService instance = LocationService._internal();
   LocationService._internal();
 
-  /// Obtains current GPS coordinates with deterministic fallback per Section 4.5
+  /// Obtains a real GPS fix. Capture remains available when this returns
+  /// LOCATION_UNCONFIRMED; fabricated coordinates are never evidence.
   Future<LocationResult> getCurrentPosition() async {
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
         return LocationResult(
-          latitude: 28.5355,
-          longitude: 77.2410,
+          latitude: null,
+          longitude: null,
           status: "LOCATION_UNCONFIRMED",
           isConfirmed: false,
           accuracyMeters: null,
@@ -39,8 +40,8 @@ class LocationService {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
           return LocationResult(
-            latitude: 28.5355,
-            longitude: 77.2410,
+            latitude: null,
+            longitude: null,
             status: "LOCATION_UNCONFIRMED",
             isConfirmed: false,
           );
@@ -49,8 +50,8 @@ class LocationService {
 
       if (permission == LocationPermission.deniedForever) {
         return LocationResult(
-          latitude: 28.5355,
-          longitude: 77.2410,
+          latitude: null,
+          longitude: null,
           status: "LOCATION_UNCONFIRMED",
           isConfirmed: false,
         );
@@ -58,7 +59,7 @@ class LocationService {
 
       final position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
-        timeLimit: const Duration(seconds: 4),
+        timeLimit: const Duration(seconds: 5),
       );
 
       return LocationResult(
@@ -71,8 +72,8 @@ class LocationService {
     } catch (e) {
       // Fail closed: degrade to LOCATION_UNCONFIRMED, never silently blank
       return LocationResult(
-        latitude: 28.5355,
-        longitude: 77.2410,
+        latitude: null,
+        longitude: null,
         status: "LOCATION_UNCONFIRMED",
         isConfirmed: false,
       );

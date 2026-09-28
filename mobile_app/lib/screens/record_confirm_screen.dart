@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:crypto/crypto.dart';
 import '../theme/gov_theme.dart';
 import '../models/domain_models.dart';
 import '../models/record_model.dart';
@@ -46,15 +47,17 @@ class RecordConfirmScreen extends StatefulWidget {
 }
 
 class _RecordConfirmScreenState extends State<RecordConfirmScreen> {
-  final TextEditingController _firController = TextEditingController(text: "FIR-2026-NDPS-0812");
-  final TextEditingController _seizureLocController =
-      TextEditingController(text: "Terminal 3 Cargo Bay, IGI Airport, New Delhi");
-  final TextEditingController _substanceController =
-      TextEditingController(text: "Brown crystalline powder concealed in double-layer poly pouch");
-  final TextEditingController _panchWitnessController =
-      TextEditingController(text: "Panch Witness: R. K. Sharma (Indep. Witness)");
+  final TextEditingController _firController = TextEditingController();
+  final TextEditingController _seizureLocController = TextEditingController();
+  final TextEditingController _substanceController = TextEditingController();
+  final TextEditingController _panchWitnessController = TextEditingController();
+  final TextEditingController _grossWeightController = TextEditingController();
+  final TextEditingController _netWeightController = TextEditingController();
+  final TextEditingController _packagingController = TextEditingController();
+  final TextEditingController _sealController = TextEditingController();
 
   bool _accusedPresent = true;
+  bool _isHighStakes = false;
   bool _isSigning = false;
   String _signingStatus = "";
 
@@ -64,6 +67,10 @@ class _RecordConfirmScreenState extends State<RecordConfirmScreen> {
     _seizureLocController.dispose();
     _substanceController.dispose();
     _panchWitnessController.dispose();
+    _grossWeightController.dispose();
+    _netWeightController.dispose();
+    _packagingController.dispose();
+    _sealController.dispose();
     super.dispose();
   }
 
@@ -79,18 +86,6 @@ class _RecordConfirmScreenState extends State<RecordConfirmScreen> {
 
       final prevHash = await db.getLastRecordHash();
 
-      setState(() => _signingStatus = "Generating Device Hardware Signature (P-256)...");
-      await Future.delayed(const Duration(milliseconds: 300));
-      final deviceSig = signer.signWithDeviceHardware(
-        "${widget.selectedKit.name}|${widget.classification.category.name}|${widget.deltaE}",
-      );
-
-      setState(() => _signingStatus = "Generating Officer PIN Session Signature (ECDSA)...");
-      await Future.delayed(const Duration(milliseconds: 300));
-      final officerSig = signer.signWithOfficerKey(
-        "${widget.currentUser.badgeNumber}|${_firController.text.trim()}",
-      );
-
       final testId = "TEST-2026-${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}";
       final classificationStr = widget.classification.category == ResultCategory.positive
           ? "POSITIVE (${widget.selectedKit.targetSubstance})"
@@ -98,12 +93,14 @@ class _RecordConfirmScreenState extends State<RecordConfirmScreen> {
               ? "NEGATIVE (NO DRUG DETECTED)"
               : "INCONCLUSIVE (RETEST REQUIRED)");
 
-      // Compute tamper-proof record hash
-      final canonicalData =
-          "$testId|${widget.currentUser.userId}|${widget.selectedKit.name}|$classificationStr|${widget.deltaE}|$prevHash";
-      final recordHash = LocalRecordModel.computeBlockSha256(canonicalData, prevHash);
-
-      final record = LocalRecordModel(
+      if (_firController.text.trim().isEmpty ||
+          _seizureLocController.text.trim().isEmpty ||
+          _panchWitnessController.text.trim().isEmpty ||
+          widget.capturedImageFile == null) {
+        throw StateError('FIR, seizure location, panch witness, and captured evidence are mandatory.');
+      }
+      final imageHash = sha256.convert(await widget.capturedImageFile!.readAsBytes()).toString();
+      final unsignedRecord = LocalRecordModel(
         testId: testId,
         timestampUtc: DateTime.now().millisecondsSinceEpoch / 1000.0,
         officerId: widget.currentUser.userId,
@@ -112,7 +109,7 @@ class _RecordConfirmScreenState extends State<RecordConfirmScreen> {
         classification: classificationStr,
         deltaE2000: widget.deltaE,
         confidence: widget.classification.confidence,
-        imageSha256: "IMG_SHA256_${recordHash.substring(0, 16)}",
+        imageSha256: imageHash,
         cardSerial: widget.cardSerial,
         latitude: widget.location?.latitude,
         longitude: widget.location?.longitude,
@@ -121,27 +118,70 @@ class _RecordConfirmScreenState extends State<RecordConfirmScreen> {
         reagentWindowOk: true,
         reactionTimeSeconds: widget.selectedKit.reactionWindowSeconds,
         prevHash: prevHash,
+        recordHash: '',
+        deviceSigHex: '',
+        officerSigHex: '',
+        isHighStakes: _isHighStakes,
+        firNumber: _firController.text.trim(),
+        seizureLocation: _seizureLocController.text.trim(),
+        substanceDescription: _substanceController.text.trim(),
+        panchWitnessDetails: _panchWitnessController.text.trim(),
+        grossWeight: _grossWeightController.text.trim(),
+        netWeight: _netWeightController.text.trim(),
+        packagingMarkings: _packagingController.text.trim(),
+        sealSerial: _sealController.text.trim(),
+      );
+      final recordHash = LocalRecordModel.computeBlockSha256(
+        unsignedRecord.toCanonicalJson(),
+        prevHash,
+      );
+      final signingPayload = '${unsignedRecord.toCanonicalJson()}|$recordHash';
+      setState(() => _signingStatus = "Generating device and officer signatures...");
+      final deviceSig = await signer.signWithDeviceHardware(signingPayload);
+      final officerSig = signer.signWithOfficerKey(signingPayload);
+      final sealedRecord = LocalRecordModel(
+        testId: unsignedRecord.testId,
+        timestampUtc: unsignedRecord.timestampUtc,
+        officerId: unsignedRecord.officerId,
+        deviceId: unsignedRecord.deviceId,
+        kitType: unsignedRecord.kitType,
+        classification: unsignedRecord.classification,
+        deltaE2000: unsignedRecord.deltaE2000,
+        confidence: unsignedRecord.confidence,
+        imageSha256: unsignedRecord.imageSha256,
+        cardSerial: unsignedRecord.cardSerial,
+        latitude: unsignedRecord.latitude,
+        longitude: unsignedRecord.longitude,
+        locationStatus: unsignedRecord.locationStatus,
+        accusedPresent: unsignedRecord.accusedPresent,
+        reagentWindowOk: unsignedRecord.reagentWindowOk,
+        reactionTimeSeconds: unsignedRecord.reactionTimeSeconds,
+        prevHash: unsignedRecord.prevHash,
         recordHash: recordHash,
         deviceSigHex: deviceSig,
         officerSigHex: officerSig,
+        isHighStakes: unsignedRecord.isHighStakes,
+        firNumber: unsignedRecord.firNumber,
+        seizureLocation: unsignedRecord.seizureLocation,
+        substanceDescription: unsignedRecord.substanceDescription,
+        panchWitnessDetails: unsignedRecord.panchWitnessDetails,
+        grossWeight: unsignedRecord.grossWeight,
+        netWeight: unsignedRecord.netWeight,
+        packagingMarkings: unsignedRecord.packagingMarkings,
+        sealSerial: unsignedRecord.sealSerial,
       );
 
       setState(() => _signingStatus = "Appending immutable block to local encrypted ledger...");
-      await db.insertRecord(record);
+      await db.insertRecord(sealedRecord);
 
       // Attempt 2G SMS Out-of-band witness anchor
       try {
-        final smsPayload = record.toGsmSmsPayload();
-        await SmsAnchorService.instance.sendSmsAnchor(
-          destinationPhone: "+911124698282", // MHA National Central Gateway
-          smsMessage: smsPayload,
-        );
+        await SmsAnchorService.instance.dispatchSmsAnchor(sealedRecord);
       } catch (_) {
         // SMS fail-safe: queue in SMS outbox
       }
 
       setState(() => _signingStatus = "Block sealed successfully.");
-      await Future.delayed(const Duration(milliseconds: 300));
 
       if (!mounted) return;
 
@@ -150,7 +190,7 @@ class _RecordConfirmScreenState extends State<RecordConfirmScreen> {
         context,
         MaterialPageRoute(
           builder: (_) => RecordDetailScreen(
-            record: record,
+             record: sealedRecord,
             capturedImageFile: widget.capturedImageFile,
           ),
         ),
@@ -221,6 +261,44 @@ class _RecordConfirmScreenState extends State<RecordConfirmScreen> {
                     label: "INDEPENDENT PANCH WITNESS DETAILS",
                     controller: _panchWitnessController,
                     icon: Icons.people_outline,
+                  ),
+                  const SizedBox(height: GovTheme.space16),
+                  _buildInputField(
+                    label: "GROSS WEIGHT / UNIT",
+                    controller: _grossWeightController,
+                    icon: Icons.scale_outlined,
+                  ),
+                  const SizedBox(height: GovTheme.space16),
+                  _buildInputField(
+                    label: "NET SAMPLE WEIGHT / UNIT",
+                    controller: _netWeightController,
+                    icon: Icons.monitor_weight_outlined,
+                  ),
+                  const SizedBox(height: GovTheme.space16),
+                  _buildInputField(
+                    label: "PACKAGING / IDENTIFYING MARKINGS",
+                    controller: _packagingController,
+                    icon: Icons.inventory_outlined,
+                  ),
+                  const SizedBox(height: GovTheme.space16),
+                  _buildInputField(
+                    label: "SEAL SERIAL / SAMPLE SEAL",
+                    controller: _sealController,
+                    icon: Icons.lock_outline,
+                  ),
+                  const SizedBox(height: GovTheme.space16),
+                  SwitchListTile(
+                    value: _isHighStakes,
+                    activeColor: GovTheme.primary,
+                    title: const Text(
+                      "Commercial quantity / high-stakes seizure",
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                    ),
+                    subtitle: const Text(
+                      "Requires a separate supervisor co-signature before final authorization.",
+                      style: TextStyle(fontSize: 11, color: GovTheme.textSecondary),
+                    ),
+                    onChanged: (value) => setState(() => _isHighStakes = value),
                   ),
                   const SizedBox(height: GovTheme.space16),
 

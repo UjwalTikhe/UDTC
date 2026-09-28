@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:sqflite/sqflite.dart';
+import 'dart:math';
+import 'package:sqflite_sqlcipher/sqflite.dart';
 import 'package:path/path.dart';
 import 'package:crypto/crypto.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../models/record_model.dart';
 import '../models/domain_models.dart';
 import 'crypto_signer_service.dart';
@@ -28,6 +30,7 @@ class LedgerIntegrityReport {
 class LocalLedgerDatabase {
   static final LocalLedgerDatabase instance = LocalLedgerDatabase._init();
   static Database? _database;
+  static const FlutterSecureStorage _secureStorage = FlutterSecureStorage();
 
   LocalLedgerDatabase._init();
 
@@ -35,17 +38,31 @@ class LocalLedgerDatabase {
 
   Future<Database> get database async {
     if (_database != null) return _database!;
-    _database = await _initDB('mha_field_ledger.db');
+    // A new filename prevents an older unencrypted sqflite database from
+    // being opened as SQLCipher without an explicit migration.
+    _database = await _initDB('mha_field_ledger_cipher.db');
     return _database!;
+  }
+
+  Future<String> _databaseKey() async {
+    const keyName = 'mha_sqlcipher_database_key';
+    final existing = await _secureStorage.read(key: keyName);
+    if (existing != null && existing.isNotEmpty) return existing;
+    final random = Random.secure();
+    final key = base64UrlEncode(List<int>.generate(32, (_) => random.nextInt(256)));
+    await _secureStorage.write(key: keyName, value: key);
+    return key;
   }
 
   Future<Database> _initDB(String filePath) async {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, filePath);
+    final password = await _databaseKey();
 
     return await openDatabase(
       path,
-      version: 5,
+      password: password,
+      version: 6,
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
     );
@@ -75,11 +92,24 @@ class LocalLedgerDatabase {
         record_hash TEXT NOT NULL,
         device_sig_hex TEXT NOT NULL,
         officer_sig_hex TEXT NOT NULL,
+        is_high_stakes INTEGER DEFAULT 0,
+        fir_number TEXT DEFAULT '',
+        seizure_location TEXT DEFAULT '',
+        substance_description TEXT DEFAULT '',
+        panch_witness_details TEXT DEFAULT '',
+        gross_weight TEXT DEFAULT '',
+        net_weight TEXT DEFAULT '',
+        packaging_markings TEXT DEFAULT '',
+        seal_serial TEXT DEFAULT '',
+        supervisor_id TEXT,
+        supervisor_sig_hex TEXT,
         is_stage1_synced INTEGER DEFAULT 0,
         is_stage2_synced INTEGER DEFAULT 0,
         is_sms_witnessed INTEGER DEFAULT 0
       )
     ''');
+
+    await _createOperationalTables(db);
 
     await db.execute('''
       CREATE TABLE IF NOT EXISTS users (
@@ -121,6 +151,32 @@ class LocalLedgerDatabase {
         credential_sig TEXT NOT NULL,
         is_activated INTEGER DEFAULT 0,
         device_id TEXT
+      )
+    ''');
+  }
+
+  Future _createOperationalTables(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS audit_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        log_id TEXT NOT NULL UNIQUE,
+        prev_log_hash TEXT NOT NULL,
+        actor_id TEXT NOT NULL,
+        action TEXT NOT NULL,
+        target_test_id TEXT,
+        timestamp_utc REAL NOT NULL,
+        entry_hash TEXT NOT NULL
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS sms_outbox (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        test_id TEXT NOT NULL UNIQUE,
+        destination TEXT NOT NULL,
+        payload TEXT NOT NULL,
+        attempts INTEGER NOT NULL DEFAULT 0,
+        next_attempt_utc REAL NOT NULL,
+        last_error TEXT
       )
     ''');
   }
@@ -180,6 +236,24 @@ class LocalLedgerDatabase {
       try { await db.execute('ALTER TABLE users ADD COLUMN is_verified INTEGER DEFAULT 0'); } catch (_) {}
       try { await db.execute('ALTER TABLE users ADD COLUMN service_id TEXT'); } catch (_) {}
     }
+    if (oldVersion < 6) {
+      for (final statement in [
+        "ALTER TABLE chain_ledger ADD COLUMN is_high_stakes INTEGER DEFAULT 0",
+        "ALTER TABLE chain_ledger ADD COLUMN fir_number TEXT DEFAULT ''",
+        "ALTER TABLE chain_ledger ADD COLUMN seizure_location TEXT DEFAULT ''",
+        "ALTER TABLE chain_ledger ADD COLUMN substance_description TEXT DEFAULT ''",
+        "ALTER TABLE chain_ledger ADD COLUMN panch_witness_details TEXT DEFAULT ''",
+        "ALTER TABLE chain_ledger ADD COLUMN gross_weight TEXT DEFAULT ''",
+        "ALTER TABLE chain_ledger ADD COLUMN net_weight TEXT DEFAULT ''",
+        "ALTER TABLE chain_ledger ADD COLUMN packaging_markings TEXT DEFAULT ''",
+        "ALTER TABLE chain_ledger ADD COLUMN seal_serial TEXT DEFAULT ''",
+        "ALTER TABLE chain_ledger ADD COLUMN supervisor_id TEXT",
+        "ALTER TABLE chain_ledger ADD COLUMN supervisor_sig_hex TEXT",
+      ]) {
+        try { await db.execute(statement); } catch (_) {}
+      }
+      await _createOperationalTables(db);
+    }
   }
 
   /// Retrieves the top-of-chain SHA-256 hash or Genesis hash if empty
@@ -200,6 +274,20 @@ class LocalLedgerDatabase {
   /// Appends a new immutable test record to the chain
   Future<LocalRecordModel> insertRecord(LocalRecordModel record) async {
     final db = await instance.database;
+    if (record.deviceSigHex.isEmpty || record.officerSigHex.isEmpty) {
+      throw StateError('Both device and officer signatures are required to seal a record.');
+    }
+    final lastHash = await getLastRecordHash();
+    if (record.prevHash != lastHash) {
+      throw StateError('Ledger head changed before sealing. Review the record and try again.');
+    }
+    final expectedHash = LocalRecordModel.computeBlockSha256(
+      record.toCanonicalJson(),
+      record.prevHash,
+    );
+    if (expectedHash != record.recordHash) {
+      throw StateError('Record hash does not match canonical evidence payload.');
+    }
     await db.insert('chain_ledger', record.toMap(), conflictAlgorithm: ConflictAlgorithm.fail);
     return record;
   }
@@ -212,6 +300,26 @@ class LocalLedgerDatabase {
       orderBy: latestFirst ? 'id DESC' : 'id ASC',
     );
     return result.map((json) => LocalRecordModel.fromMap(json)).toList();
+  }
+
+  Future<void> applySupervisorCoSign({
+    required String testId,
+    required String supervisorId,
+    required String supervisorSignature,
+  }) async {
+    final db = await instance.database;
+    final changed = await db.update(
+      'chain_ledger',
+      {
+        'supervisor_id': supervisorId,
+        'supervisor_sig_hex': supervisorSignature,
+      },
+      where: 'test_id = ? AND (supervisor_sig_hex IS NULL OR supervisor_sig_hex = "")',
+      whereArgs: [testId],
+    );
+    if (changed != 1) {
+      throw StateError('Record is no longer awaiting supervisory co-signature.');
+    }
   }
 
   Future<LocalRecordModel?> getRecordById(String testId) async {
@@ -318,8 +426,111 @@ class LocalLedgerDatabase {
     );
   }
 
+  Future<void> enqueueSmsAnchor({
+    required String testId,
+    required String destination,
+    required String payload,
+    String? error,
+  }) async {
+    final db = await instance.database;
+    final now = DateTime.now().toUtc().millisecondsSinceEpoch / 1000.0;
+    await db.insert(
+      'sms_outbox',
+      {
+        'test_id': testId,
+        'destination': destination,
+        'payload': payload,
+        'attempts': 0,
+        'next_attempt_utc': now,
+        'last_error': error,
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> getPendingSmsOutbox() async {
+    final db = await instance.database;
+    final now = DateTime.now().toUtc().millisecondsSinceEpoch / 1000.0;
+    return db.query(
+      'sms_outbox',
+      where: 'next_attempt_utc <= ?',
+      whereArgs: [now],
+      orderBy: 'id ASC',
+    );
+  }
+
+  Future<void> markSmsOutboxAttempt(String testId, String error) async {
+    final db = await instance.database;
+    final rows = await db.query(
+      'sms_outbox',
+      columns: ['attempts'],
+      where: 'test_id = ?',
+      whereArgs: [testId],
+      limit: 1,
+    );
+    final attempts = rows.isEmpty ? 0 : (rows.first['attempts'] as num).toInt();
+    final nextAttempt = DateTime.now().toUtc().add(
+      Duration(seconds: min(3600, 30 * (1 << min(attempts, 6)))),
+    );
+    await db.update(
+      'sms_outbox',
+      {
+        'attempts': attempts + 1,
+        'next_attempt_utc': nextAttempt.millisecondsSinceEpoch / 1000.0,
+        'last_error': error,
+      },
+      where: 'test_id = ?',
+      whereArgs: [testId],
+    );
+  }
+
+  Future<void> removeSmsOutbox(String testId) async {
+    final db = await instance.database;
+    await db.delete('sms_outbox', where: 'test_id = ?', whereArgs: [testId]);
+  }
+
+  Future<int> pendingSmsCount() async {
+    final db = await instance.database;
+    final rows = await db.rawQuery('SELECT COUNT(*) AS count FROM sms_outbox');
+    return (rows.first['count'] as num).toInt();
+  }
+
+  Future<void> appendAuditLog({
+    required String actorId,
+    required String action,
+    String? targetTestId,
+    String? entryHash,
+  }) async {
+    final db = await instance.database;
+    final previous = await db.query('audit_log', orderBy: 'id DESC', limit: 1);
+    final previousHash = previous.isEmpty
+        ? genesisHash
+        : previous.first['entry_hash'] as String;
+    final logId = 'AUDIT-${DateTime.now().toUtc().microsecondsSinceEpoch}';
+    final canonical = jsonEncode({
+      'log_id': logId,
+      'prev_log_hash': previousHash,
+      'actor_id': actorId,
+      'action': action,
+      'target_test_id': targetTestId,
+      'timestamp_utc': DateTime.now().toUtc().toIso8601String(),
+    });
+    final hash = entryHash ?? sha256.convert(utf8.encode(canonical)).toString();
+    await db.insert('audit_log', {
+      'log_id': logId,
+      'prev_log_hash': previousHash,
+      'actor_id': actorId,
+      'action': action,
+      'target_test_id': targetTestId,
+      'timestamp_utc': DateTime.now().toUtc().millisecondsSinceEpoch / 1000.0,
+      'entry_hash': hash,
+    });
+  }
+
   /// Seeds default verified test records if database has no records
   Future<void> seedInitialDemoDataIfEmpty() async {
+    return;
+    /*
     final records = await getAllRecords();
     if (records.isNotEmpty) return;
 
@@ -354,7 +565,7 @@ class LocalLedgerDatabase {
     );
 
     final hash1 = LocalRecordModel.computeBlockSha256(canonical1.toCanonicalJson(), genesisHash);
-    final sigs1 = signer.signDualBound(
+    final sigs1 = await signer.signDualBound(
       canonicalRecordPayload: canonical1.toCanonicalJson(),
       officerPin: "749210",
       officerId: "OFFICER-RAJESH-04",
@@ -415,7 +626,7 @@ class LocalLedgerDatabase {
     );
 
     final hash2 = LocalRecordModel.computeBlockSha256(canonical2.toCanonicalJson(), hash1);
-    final sigs2 = signer.signDualBound(
+    final sigs2 = await signer.signDualBound(
       canonicalRecordPayload: canonical2.toCanonicalJson(),
       officerPin: "749210",
       officerId: "OFFICER-RAJESH-04",
@@ -447,6 +658,7 @@ class LocalLedgerDatabase {
       isSmsWitnessed: 1,
     );
     await insertRecord(record2);
+    */
   }
 
   // ==========================================
@@ -460,6 +672,8 @@ class LocalLedgerDatabase {
   }
 
   Future<void> seedDefaultUsersIfEmpty() async {
+    return;
+    /*
     final db = await instance.database;
     final res = await db.query('users', limit: 1);
     if (res.isEmpty) {
@@ -526,6 +740,7 @@ class LocalLedgerDatabase {
 
     // Always seed department registry as well
     await seedDepartmentRegistryIfEmpty();
+    */
   }
 
   Future<void> seedDepartmentRegistryIfEmpty() async {
@@ -613,8 +828,6 @@ class LocalLedgerDatabase {
     final clean = query.trim().toUpperCase();
     if (clean.isEmpty) return null;
 
-    await seedDepartmentRegistryIfEmpty();
-
     final results = await db.query(
       'department_registry',
       where: 'UPPER(badge_number) = ? OR UPPER(service_id) = ?',
@@ -633,7 +846,10 @@ class LocalLedgerDatabase {
   }) async {
     final db = await instance.database;
     final devId = deviceId ?? "MHA-SECURE-DEV-001";
-    final effectivePass = password ?? "Officer@123";
+    final effectivePass = password;
+    if (effectivePass == null || effectivePass.isEmpty) {
+      throw StateError('A user-supplied officer password is required for provisioning.');
+    }
 
     final existing = await db.query(
       'users',

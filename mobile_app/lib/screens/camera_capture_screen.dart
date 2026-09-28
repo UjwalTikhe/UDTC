@@ -1,8 +1,6 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show rootBundle;
-import 'package:path_provider/path_provider.dart';
 import 'package:camera/camera.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -10,6 +8,7 @@ import '../theme/gov_theme.dart';
 import '../models/domain_models.dart';
 import '../services/forensic_watermark_service.dart';
 import '../services/optical_processing_service.dart';
+import '../services/camera_quality_gate.dart';
 import 'processing_screen.dart';
 
 /// Screen 7: Field Drug Testing Camera & Real-Time GPS Geolocation Screen
@@ -58,18 +57,11 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
 
   // Capture State & Quality
   bool _isCapturing = false;
+  bool _liveQualityPassed = false;
+  bool _liveFiducialsDetected = false;
+  double _liveLaplacianVariance = 0;
+  DateTime _lastQualityCheck = DateTime.fromMillisecondsSinceEpoch(0);
   bool _accusedPresent = true;
-  File? _chosenTestSampleFile;
-
-  Future<File> _loadAssetToFile(String assetPath, String filename) async {
-    final byteData = await rootBundle.load(assetPath);
-    final tempDir = await getTemporaryDirectory();
-    final file = File('${tempDir.path}/$filename');
-    await file.writeAsBytes(
-      byteData.buffer.asUint8List(byteData.offsetInBytes, byteData.lengthInBytes),
-    );
-    return file;
-  }
 
   @override
   void initState() {
@@ -168,6 +160,7 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
       );
       _cameraController = controller;
       await controller.initialize();
+      await controller.startImageStream(_onCameraFrame);
       try {
         await controller.setFocusMode(FocusMode.auto);
         await controller.setExposureMode(ExposureMode.auto);
@@ -191,6 +184,7 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
       );
       _cameraController = fallbackController;
       await fallbackController.initialize();
+      await fallbackController.startImageStream(_onCameraFrame);
       try {
         await fallbackController.setFocusMode(FocusMode.auto);
         await fallbackController.setExposureMode(ExposureMode.auto);
@@ -227,6 +221,19 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
     }
   }
 
+  void _onCameraFrame(CameraImage image) {
+    final now = DateTime.now();
+    if (now.difference(_lastQualityCheck).inMilliseconds < 220 || _isCapturing) return;
+    _lastQualityCheck = now;
+    final metrics = CameraQualityGate.fromCameraImage(image);
+    if (!mounted) return;
+    setState(() {
+      _liveLaplacianVariance = metrics.laplacianVariance;
+      _liveFiducialsDetected = metrics.fourFiducialsVisible;
+      _liveQualityPassed = metrics.passed;
+    });
+  }
+
   Future<void> _flipCamera() async {
     if (_cameras.length < 2) return;
     final nextIndex = (_selectedCameraIndex + 1) % _cameras.length;
@@ -260,24 +267,11 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
         return;
       }
 
-      // 2. Fetch current high-precision position
+      // 2. Fetch current high-precision position. A timeout or denial must
+      // never block capture and must never create a fabricated location.
       final initialPosition = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
-      ).timeout(
-        const Duration(seconds: 5),
-        onTimeout: () => Position(
-          longitude: 77.2410,
-          latitude: 28.5355,
-          timestamp: DateTime.now(),
-          accuracy: 4.5,
-          altitude: 216.0,
-          altitudeAccuracy: 1.0,
-          heading: 0.0,
-          headingAccuracy: 1.0,
-          speed: 0.0,
-          speedAccuracy: 0.0,
-        ),
-      );
+      ).timeout(const Duration(seconds: 5));
 
       if (mounted) {
         setState(() {
@@ -316,7 +310,7 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
   Future<void> _handleCaptureShutter({File? overrideFile}) async {
     if (_isCapturing) return;
 
-    if (overrideFile == null && _chosenTestSampleFile == null) {
+    if (overrideFile == null) {
       if (_cameraController == null || !_cameraController!.value.isInitialized) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -342,14 +336,41 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
     try {
       File rawPhotoFile;
 
-      // 1. Take photograph from device camera hardware or test override
+      // 1. Take photograph from device camera hardware
       if (overrideFile != null) {
         rawPhotoFile = overrideFile;
-      } else if (_chosenTestSampleFile != null) {
-        rawPhotoFile = _chosenTestSampleFile!;
       } else if (_cameraController != null && _cameraController!.value.isInitialized) {
-        final XFile photo = await _cameraController!.takePicture();
-        rawPhotoFile = File(photo.path);
+        if (!_liveQualityPassed) {
+          throw StateError(
+            'Capture blocked: keep all four reference fiducials visible and hold the device steady '
+            '(sharpness ${_liveLaplacianVariance.toStringAsFixed(1)} / 100).',
+          );
+        }
+        await _cameraController!.stopImageStream();
+        final burst = <File>[];
+        for (var i = 0; i < 4; i++) {
+          final photo = await _cameraController!.takePicture();
+          burst.add(File(photo.path));
+          if (i < 3) await Future<void>.delayed(const Duration(milliseconds: 100));
+        }
+        var bestIndex = 0;
+        var bestScore = -1.0;
+        for (var i = 0; i < burst.length; i++) {
+          final score = CameraQualityGate.fromEncodedImage(await burst[i].readAsBytes());
+          if (score > bestScore) {
+            bestScore = score;
+            bestIndex = i;
+          }
+        }
+        if (mounted && _cameraController!.value.isInitialized) {
+          await _cameraController!.startImageStream(_onCameraFrame);
+        }
+        rawPhotoFile = burst[bestIndex];
+        for (var i = 0; i < burst.length; i++) {
+          if (i != bestIndex) {
+            try { await burst[i].delete(); } catch (_) {}
+          }
+        }
       } else {
         setState(() => _isCapturing = false);
         return;
@@ -366,9 +387,9 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
         );
         locationConfirmed = true;
       } else {
-        // Default to officer operational precinct
-        geoPoint = GeoPoint(latitude: 28.5355, longitude: 77.2410, accuracy: 5.0);
-        locationConfirmed = true;
+        // Fail open for capture, fail closed for trust.
+        geoPoint = null;
+        locationConfirmed = false;
       }
 
       final testId =
@@ -382,8 +403,8 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
           testId: testId,
           officerBadge: widget.currentUser.badgeNumber,
           deviceId: widget.currentUser.deviceId,
-          latitude: geoPoint.latitude,
-          longitude: geoPoint.longitude,
+                                     latitude: geoPoint?.latitude,
+                                     longitude: geoPoint?.longitude,
           locationConfirmed: locationConfirmed,
         );
       } catch (e) {
@@ -416,7 +437,7 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
   void _showEvidenceReviewDialog({
     required File watermarkedFile,
     required String testId,
-    required GeoPoint geoPoint,
+    required GeoPoint? geoPoint,
     required bool locationConfirmed,
   }) {
     showModalBottomSheet(
@@ -514,10 +535,8 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
                                       width: double.infinity,
                                     )
                                   else
-                                    Image.asset(
-                                      'assets/field_sample_positive.png',
-                                      fit: BoxFit.contain,
-                                      width: double.infinity,
+                                    const Center(
+                                      child: Icon(Icons.broken_image_outlined, color: Colors.white70, size: 40),
                                     ),
                                   Positioned(
                                     bottom: 8,
@@ -580,7 +599,9 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
                                 ),
                                 _buildDetailRow(
                                   "Live GPS Geotag:",
-                                  "${geoPoint.latitude.toStringAsFixed(5)}° N, ${geoPoint.longitude.toStringAsFixed(5)}° E",
+                                   geoPoint == null
+                                       ? "UNCONFIRMED — no GPS fix"
+                                       : "${geoPoint.latitude.toStringAsFixed(5)}° N, ${geoPoint.longitude.toStringAsFixed(5)}° E",
                                   isHighlight: true,
                                 ),
                                 _buildDetailRow(
@@ -672,7 +693,7 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
                                     Navigator.pop(ctx); // Close sheet
                                     final captureResult = CaptureResult(
                                       capturedImageFile: watermarkedFile,
-                                      location: geoPoint,
+         location: geoPoint,
                                       locationConfirmed: locationConfirmed,
                                       kitType: _activeKit,
                                       cardSerial: widget.cardSerial,
@@ -1015,35 +1036,6 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
             onPressed: _flipCamera,
           ),
           // Reference Evidence Photo Selector (for field evaluation and testing)
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.photo_library_outlined, color: Colors.white70, size: 20),
-            tooltip: "Load Evidence Sample Photo",
-            onSelected: (val) async {
-              File loaded;
-              if (val == 'positive') {
-                loaded = await _loadAssetToFile('assets/field_sample_positive.png', 'positive_sample.png');
-              } else if (val == 'negative') {
-                loaded = await _loadAssetToFile('assets/field_sample_negative.png', 'negative_sample.png');
-              } else {
-                loaded = await _loadAssetToFile('assets/field_sample_blurry.png', 'blurry_sample.png');
-              }
-              _handleCaptureShutter(overrideFile: loaded);
-            },
-            itemBuilder: (_) => const [
-              PopupMenuItem(
-                value: 'positive',
-                child: Text("Load Positive Evidence Photo (Marquis Purple)"),
-              ),
-              PopupMenuItem(
-                value: 'negative',
-                child: Text("Load Negative Evidence Photo (Unreacted Amber)"),
-              ),
-              PopupMenuItem(
-                value: 'blurry',
-                child: Text("Load Degraded / Blurry Photo"),
-              ),
-            ],
-          ),
         ],
       ),
     );
@@ -1051,7 +1043,7 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
 
   Widget _buildDrugSelectorBar() {
     return Container(
-      color: const Color(0xFF111827),
+      color: Colors.black,
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1254,7 +1246,7 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
 
           // Center: Shutter Button with Camera State Feedback
           GestureDetector(
-            onTap: _isCapturing ? null : _handleCaptureShutter,
+            onTap: (_isCapturing || !_liveQualityPassed) ? null : _handleCaptureShutter,
             child: Container(
               width: 76,
               height: 76,
@@ -1262,14 +1254,14 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
                 shape: BoxShape.circle,
                 color: Colors.white,
                 border: Border.all(
-                  color: (_isCameraInitialized && _cameraController != null && _cameraController!.value.isInitialized)
+                  color: (_isCameraInitialized && _liveQualityPassed)
                       ? GovTheme.alertNegativeText
                       : Colors.grey.shade400,
                   width: 4,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: (_isCameraInitialized && _cameraController != null && _cameraController!.value.isInitialized)
+                    color: (_isCameraInitialized && _liveQualityPassed)
                         ? Colors.greenAccent.withValues(alpha: 0.4)
                         : Colors.black26,
                     blurRadius: 16,
@@ -1292,7 +1284,7 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
                         height: 58,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: (_isCameraInitialized && _cameraController != null && _cameraController!.value.isInitialized)
+                          color: (_isCameraInitialized && _liveQualityPassed)
                               ? GovTheme.primary
                               : Colors.grey.shade600,
                         ),
@@ -1336,7 +1328,7 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
 
   Widget _buildCameraErrorView() {
     return Container(
-      color: const Color(0xFF111827),
+      color: Colors.black,
       padding: const EdgeInsets.all(24),
       child: Center(
         child: SingleChildScrollView(
@@ -1383,57 +1375,6 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
                 ),
               ),
               const SizedBox(height: 18),
-              const Text(
-                "Or evaluate with reference evidence photos:",
-                style: TextStyle(color: Colors.white60, fontSize: 11),
-              ),
-              const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              alignment: WrapAlignment.center,
-              children: [
-                OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.greenAccent,
-                    side: const BorderSide(color: Colors.greenAccent),
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                  ),
-                  onPressed: () async {
-                    final f = await _loadAssetToFile('assets/field_sample_positive.png', 'positive_sample.png');
-                    _handleCaptureShutter(overrideFile: f);
-                  },
-                  icon: const Icon(Icons.check_circle_outline, size: 15),
-                  label: const Text("TEST POSITIVE SAMPLE", style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold)),
-                ),
-                OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.lightBlueAccent,
-                    side: const BorderSide(color: Colors.lightBlueAccent),
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                  ),
-                  onPressed: () async {
-                    final f = await _loadAssetToFile('assets/field_sample_negative.png', 'negative_sample.png');
-                    _handleCaptureShutter(overrideFile: f);
-                  },
-                  icon: const Icon(Icons.remove_circle_outline, size: 15),
-                  label: const Text("TEST NEGATIVE SAMPLE", style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold)),
-                ),
-                OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.amberAccent,
-                    side: const BorderSide(color: Colors.amberAccent),
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                  ),
-                  onPressed: () async {
-                    final f = await _loadAssetToFile('assets/field_sample_blurry.png', 'blurry_sample.png');
-                    _handleCaptureShutter(overrideFile: f);
-                  },
-                  icon: const Icon(Icons.blur_on, size: 15),
-                  label: const Text("TEST BLURRY SAMPLE", style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold)),
-                ),
-              ],
-            ),
           ],
         ),
       ),

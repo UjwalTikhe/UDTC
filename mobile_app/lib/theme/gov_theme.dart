@@ -1,98 +1,62 @@
 import 'package:flutter/material.dart';
+import 'app_colors.dart';
+import 'app_text_styles.dart';
+import 'app_spacing.dart';
 
 /// Government of India / Ministry of Home Affairs (MHA) Design System
 /// Compliant with GIGW 3.0 (Guidelines for Indian Government Websites & Apps)
 /// and WCAG 2.1 Level AA (Minimum 4.5:1 text contrast).
 class GovTheme {
   // --- 1. Official Color Tokens ---
-  static const Color bgBase = Color(0xFFF7F9FC); // Light, cool, crisp canvas
-  static const Color bgSurface = Color(0xFFFFFFFF); // Clean elevated surfaces
-  static const Color textPrimary = Color(0xFF1A1F29); // 15.65:1 contrast against bgBase
-  static const Color textSecondary = Color(0xFF5B6472); // ~4.6:1 contrast against bgBase
-  static const Color borderDefault = Color(0xFFE1E5EB); // Subtle framing divider
+  static const Color bgBase = AppColors.bgBase;
+  static const Color bgSurface = AppColors.bgSurface;
+  static const Color textPrimary = AppColors.textPrimary;
+  static const Color textSecondary = AppColors.textSecondary;
+  static const Color borderDefault = AppColors.borderDefault;
   
   // Government Identity Colors
-  static const Color primary = Color(0xFF1E4B8F); // Indian Govt Emblem Navy (8.55:1 against white)
-  static const Color primaryPressed = Color(0xFF163765);
-  static const Color secondary = Color(0xFF445266);
+  static const Color primary = AppColors.primary;
+  static const Color primaryPressed = AppColors.primaryPressed;
+  static const Color secondary = AppColors.secondary;
   
   // Sovereign Indian Tricolor Accents
-  static const Color tricolorSaffron = Color(0xFFFF9933);
-  static const Color tricolorWhite = Color(0xFFFFFFFF);
-  static const Color tricolorGreen = Color(0xFF138808);
-  static const Color ashokaNavy = Color(0xFF0A2558);
+  static const Color tricolorSaffron = AppColors.sovereignSaffron;
+  static const Color tricolorWhite = AppColors.bgSurface;
+  static const Color tricolorGreen = AppColors.sovereignGreen;
+  static const Color ashokaNavy = AppColors.primary;
 
   // --- 2. Forensic / Contraband Status Colors (Non-Traffic-Light Naive) ---
   // Positive = Contraband Detected (Alert state) -> High contrast Red
-  static const Color alertPositiveBg = Color(0xFFFDECEA);
-  static const Color alertPositiveText = Color(0xFFB3261E); // 5.71:1 contrast
+  static const Color alertPositiveBg = AppColors.positiveBg;
+  static const Color alertPositiveText = AppColors.positiveText;
 
   // Negative = No Contraband Detected (Clear state) -> High contrast Green
-  static const Color alertNegativeBg = Color(0xFFE8F5E9);
-  static const Color alertNegativeText = Color(0xFF1B6E2F); // 5.62:1 contrast
-  static const Color statusSuccess = Color(0xFF1B6E2F); // Official success emerald
+  static const Color alertNegativeBg = AppColors.negativeBg;
+  static const Color alertNegativeText = AppColors.negativeText;
+  static const Color statusSuccess = AppColors.negativeText;
 
   // Inconclusive = Degraded/Unconfirmed (Lab/Retest needed) -> High contrast Amber
-  static const Color alertInconclusiveBg = Color(0xFFFFF4E0);
-  static const Color alertInconclusiveText = Color(0xFF9E5B00); // 4.88:1 contrast
+  static const Color alertInconclusiveBg = AppColors.inconclusiveBg;
+  static const Color alertInconclusiveText = AppColors.inconclusiveText;
 
   // --- 3. Typography Scale (Major Third 1.25 Ratio) ---
-  static const TextStyle display = TextStyle(
-    fontSize: 28,
-    fontWeight: FontWeight.w800,
-    letterSpacing: -0.5,
-    color: textPrimary,
-    fontFamily: 'Roboto',
-  );
-
-  static const TextStyle title = TextStyle(
-    fontSize: 22,
-    fontWeight: FontWeight.w700,
-    letterSpacing: -0.2,
-    color: textPrimary,
-    fontFamily: 'Roboto',
-  );
-
-  static const TextStyle subtitle = TextStyle(
-    fontSize: 18,
-    fontWeight: FontWeight.w600,
-    color: textPrimary,
-    fontFamily: 'Roboto',
-  );
-
-  static const TextStyle body = TextStyle(
-    fontSize: 16,
-    fontWeight: FontWeight.w400,
-    color: textPrimary,
-    height: 1.45,
-    fontFamily: 'Roboto',
-  );
-
-  static const TextStyle caption = TextStyle(
-    fontSize: 13,
-    fontWeight: FontWeight.w500,
-    color: textSecondary,
-    fontFamily: 'Roboto',
-  );
-
-  static const TextStyle codeHash = TextStyle(
-    fontSize: 12,
-    fontWeight: FontWeight.w600,
-    fontFamily: 'monospace',
-    color: textPrimary,
-    letterSpacing: 0.5,
-  );
+  static const TextStyle display = AppTextStyles.display;
+  static const TextStyle title = AppTextStyles.title;
+  static const TextStyle subtitle = AppTextStyles.subtitle;
+  static const TextStyle body = AppTextStyles.body;
+  static const TextStyle caption = AppTextStyles.caption;
+  static const TextStyle codeHash = AppTextStyles.codeHash;
 
   // --- 4. 8dp Grid Spacing Tokens ---
-  static const double space4 = 4.0;
-  static const double space8 = 8.0;
+  static const double space4 = AppSpacing.x1;
+  static const double space8 = AppSpacing.x2;
   static const double space12 = 12.0;
-  static const double space16 = 16.0;
+  static const double space16 = AppSpacing.x4;
   static const double space20 = 20.0;
-  static const double space24 = 24.0;
-  static const double space32 = 32.0;
-  static const double space40 = 40.0;
-  static const double space48 = 48.0;
+  static const double space24 = AppSpacing.x6;
+  static const double space32 = AppSpacing.x8;
+  static const double space40 = AppSpacing.x10;
+  static const double space48 = AppSpacing.x12;
 
   // --- 5. Touch Target Constraints ---
   static const double minTouchTarget = 48.0;
@@ -278,22 +242,22 @@ class StatutoryWarningBanner extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF3CD),
+        color: GovTheme.alertInconclusiveBg,
         border: Border(
-          top: BorderSide(color: const Color(0xFFFFEEBA), width: 1),
-          bottom: BorderSide(color: const Color(0xFFFFD966), width: 1.5),
+          top: BorderSide(color: GovTheme.alertInconclusiveText, width: 1),
+          bottom: BorderSide(color: GovTheme.alertInconclusiveText, width: 1.5),
         ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.gavel, color: Color(0xFF856404), size: 20),
+          const Icon(Icons.gavel, color: GovTheme.alertInconclusiveText, size: 20),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               text,
               style: const TextStyle(
-                color: Color(0xFF856404),
+                color: GovTheme.alertInconclusiveText,
                 fontSize: 12.5,
                 fontWeight: FontWeight.w700,
                 height: 1.35,

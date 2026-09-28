@@ -35,11 +35,15 @@ class SmsAnchorService {
   /// Dispatches 140-char out-of-band witness anchor over the officer's device SIM
   Future<bool> dispatchSmsAnchor(LocalRecordModel record) async {
     final payload = record.toGsmSmsPayload();
+    if (payload.length > 140) {
+      throw StateError('SMS witness anchor exceeds the 140-character GSM limit.');
+    }
     final now = DateTime.now();
 
     bool success = false;
-    String status = "DELIVERED_WITNESS";
-    String ref = "GSM-WITNESS-${now.millisecondsSinceEpoch.toString().substring(6)}";
+    String status = "QUEUED_OFFLINE";
+    String? error;
+    String? ref;
 
     try {
       final res = await _smsChannel.invokeMethod<bool>('sendSms', {
@@ -49,14 +53,13 @@ class SmsAnchorService {
       if (res == true) {
         status = "DISPATCHED_SIM";
         success = true;
+        ref = "GSM-${now.millisecondsSinceEpoch}";
       } else {
-        status = "DELIVERED_WITNESS";
-        success = true;
+        error = "Native SMS channel did not confirm dispatch.";
       }
     } catch (e) {
-      debugPrint("Native telephony dispatch exception (falling back to queue): $e");
-      status = "DELIVERED_WITNESS";
-      success = true;
+      debugPrint("Native telephony dispatch queued for retry: $e");
+      error = e.toString();
     }
 
     final entry = SmsDispatchEntry(
@@ -71,6 +74,14 @@ class SmsAnchorService {
 
     if (success) {
       await LocalLedgerDatabase.instance.markSmsWitnessed(record.testId);
+      await LocalLedgerDatabase.instance.removeSmsOutbox(record.testId);
+    } else {
+      await LocalLedgerDatabase.instance.enqueueSmsAnchor(
+        testId: record.testId,
+        destination: mhaGatewayNumber,
+        payload: payload,
+        error: error,
+      );
     }
 
     return success;
@@ -89,7 +100,7 @@ class SmsAnchorService {
       return res == true;
     } catch (e) {
       debugPrint("Native telephony direct send exception: $e");
-      return true; // fail-safe success simulation in dev
+      return false;
     }
   }
 }

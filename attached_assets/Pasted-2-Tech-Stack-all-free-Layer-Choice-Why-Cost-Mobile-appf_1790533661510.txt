@@ -1,0 +1,132 @@
+2. Tech Stack (all free)
+Layer
+Choice
+Why
+Cost
+Mobile appframework
+Flutter (Dart)
+Single codebase forAndroid+iOS, strongcamera control, easyplatform-channelaccess to AndroidKeystore / iOS SecureEnclave
+Free, open-source
+Cameracapture
+camera
+Flutter plugin
+Direct frame accessneeded for burstcapture + live qualitychecks
+Free
+Computervision
+OpenCV
+(via
+opencv_dart
+ornative Android/iOS OpenCV SDKthrough platform channel)
+Reference-carddetection, blur(Laplacian variance),color-space conversion(RGB→Lab)
+Free, open-source(Apache 2.0)
+Card cornerdetection
+OpenCV ArUco markers
+Print 4 small ArUcomarkers at the cornersof your reference card— far more robust torotation/tilt than plainedge detection
+Free
+QR/barcodescan (cardserial, officer IDbadge)
+Google ML Kit — BarcodeScanning API
+Fully
+on-device
+, worksoffline, no API key, nointernet call
+Free, unlimited
+Local database
+SQLite
+via
+sqflite
+, encryptedwith
+SQLCipher
+Embedded, works fullyoffline, supports yourhash-chain ledger as anormal table
+Free, open-source
+Local secretstorage
+flutter_secure_storage
+(wraps Android Keystore / iOSKeychain)
+Stores wrapped keys,never raw key material
+Free
+Layer
+Choice
+Why
+Cost
+Hashing
+SHA-256 via Dart's built-in
+crypto
+package
+Standard, matches BSASection 63's expectedalgorithm
+Free
+Device signingkey
+Android Keystore (StrongBoxwhere available) / iOS SecureEnclave
+, ECDSA P-256
+Hardware-backed, non-exportable — this iswhat makes "signed bythis device" meaningful
+Free (OS-native)
+Officer-boundkey
+PBKDF2/Argon2 key derivationfrom officer PIN + salt, via
+PointyCastle
+(Dart cryptolibrary)
+Second signing factor,independent of thedevice
+Free, open-source
+Backend / DB
+Firebase Spark (free plan)
+—Firestore + Cloud Storage +Cloud Functions + Auth
+Always-on (doesn'tsleep/pause like somefree tiers), generousfree quota, good offline-sync SDKs
+Free
+Alternativebackend
+Supabase free tier
+(Postgres, ifyour team prefers SQL forsearch/audit queries)
+Real relational DB, row-level security
+Free —
+but auto-pauses after 7 daysof inactivity; ping itwith a freeUptimeRobotmonitor beforedemo day
+Extra serverlogic (Merkleroot batching,certificategeneration)
+Render.com free web service
+(Node/Express) or FirebaseCloud Functions
+Free compute forbackend jobs
+Free —
+Render freetier sleeps after 15min idle, ~30–50scold start on firstrequest; sameUptimeRobot trickfixes this before ademo
+SMS out-of-band anchor
+Native device SMS
+(Android
+SmsManager
+via
+telephony
+/
+flutter_sms
+plugin)
+Sends through theofficer's own SIM —
+nothird-party SMSgateway or API keyneeded at all
+Free (beyondnormal telecomSMS, usuallyalready covered ongovt-issued SIMs)
+Layer
+Choice
+Why
+Cost
+GPS
+geolocator
+Flutter plugin
+Native deviceGPS/network location
+Free
+Reversegeocoding(optional,human-readablelocation)
+OpenStreetMap Nominatim
+Free, no key requiredfor low-volume use(respect usage policy,add attribution)
+Free
+Pushnotifications
+Firebase Cloud Messaging(FCM)
+Sync status, supervisorapproval alerts
+Free, unlimited
+Designmockups
+Figma free tier
+For the Editor/PPTperson
+Free
+Repo + CI
+GitHub
+(apply for GitHubStudent Developer Pack — freeprivate repos, free domain credits,free Sentry, extra perks)
+Version control, GitHubActions for CI
+Free
+Error tracking(optional)
+Sentry free tier
+(comes viaStudent Pack)
+Crash/error monitoringduring testing
+Free
+MDM concept(for the"nation-level"story, notrequired fordemo)
+Headwind MDM
+(open-source)
+Shows you've thoughtabout how NCB wouldactuallyprovision/revokehundreds of devices
+Free, self-hostable
+No paid API is required anywhere in this stack.
+Everything sensitive (signing, hashing,on-device barcode reading) runs on the phone itself using OS-native or open-sourcecapability — this is a deliberate design choice, not just a budget workaround, because it alsomeans less attack surface and no dependency on a third party being trustworthy.

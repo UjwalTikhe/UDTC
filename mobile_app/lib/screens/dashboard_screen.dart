@@ -55,7 +55,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Future<void> _initData() async {
     setState(() => _isLoading = true);
     _signer.initializeHardwareKeystore();
-    await _db.seedInitialDemoDataIfEmpty();
     await _refreshDashboard();
   }
 

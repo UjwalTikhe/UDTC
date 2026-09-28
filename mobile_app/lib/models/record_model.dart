@@ -23,6 +23,17 @@ class LocalRecordModel {
   final String recordHash;
   final String deviceSigHex;
   final String officerSigHex;
+  final bool isHighStakes;
+  final String firNumber;
+  final String seizureLocation;
+  final String substanceDescription;
+  final String panchWitnessDetails;
+  final String grossWeight;
+  final String netWeight;
+  final String packagingMarkings;
+  final String sealSerial;
+  final String? supervisorId;
+  final String? supervisorSigHex;
   final int isStage1Synced; // 0 = pending, 1 = synced
   final int isStage2Synced; // 0 = pending, 1 = synced
   final int isSmsWitnessed; // 0 = pending, 1 = sent over GSM
@@ -48,6 +59,17 @@ class LocalRecordModel {
     required this.recordHash,
     required this.deviceSigHex,
     required this.officerSigHex,
+    this.isHighStakes = false,
+    this.firNumber = '',
+    this.seizureLocation = '',
+    this.substanceDescription = '',
+    this.panchWitnessDetails = '',
+    this.grossWeight = '',
+    this.netWeight = '',
+    this.packagingMarkings = '',
+    this.sealSerial = '',
+    this.supervisorId,
+    this.supervisorSigHex,
     this.isStage1Synced = 0,
     this.isStage2Synced = 0,
     this.isSmsWitnessed = 0,
@@ -144,6 +166,17 @@ class LocalRecordModel {
       'reagent_window_ok': reagentWindowOk,
       'test_id': testId,
       'timestamp_utc': double.parse(timestampUtc.toStringAsFixed(3)),
+      'is_high_stakes': isHighStakes,
+      'fir_number': firNumber,
+      'seizure_location': seizureLocation,
+      'substance_description': substanceDescription,
+      'panch_witness_details': panchWitnessDetails,
+      'gross_weight': grossWeight,
+      'net_weight': netWeight,
+      'packaging_markings': packagingMarkings,
+      'seal_serial': sealSerial,
+      'supervisor_id': supervisorId,
+      'supervisor_sig_hex': supervisorSigHex,
     };
     return jsonEncode(map);
   }
@@ -191,6 +224,17 @@ class LocalRecordModel {
       'record_hash': recordHash,
       'device_sig_hex': deviceSigHex,
       'officer_sig_hex': officerSigHex,
+      'is_high_stakes': isHighStakes ? 1 : 0,
+      'fir_number': firNumber,
+      'seizure_location': seizureLocation,
+      'substance_description': substanceDescription,
+      'panch_witness_details': panchWitnessDetails,
+      'gross_weight': grossWeight,
+      'net_weight': netWeight,
+      'packaging_markings': packagingMarkings,
+      'seal_serial': sealSerial,
+      'supervisor_id': supervisorId,
+      'supervisor_sig_hex': supervisorSigHex,
       'is_stage1_synced': isStage1Synced,
       'is_stage2_synced': isStage2Synced,
       'is_sms_witnessed': isSmsWitnessed,
@@ -219,6 +263,17 @@ class LocalRecordModel {
       recordHash: map['record_hash'] as String,
       deviceSigHex: map['device_sig_hex'] as String,
       officerSigHex: map['officer_sig_hex'] as String,
+      isHighStakes: (map['is_high_stakes'] ?? 0) == 1,
+      firNumber: map['fir_number'] as String? ?? '',
+      seizureLocation: map['seizure_location'] as String? ?? '',
+      substanceDescription: map['substance_description'] as String? ?? '',
+      panchWitnessDetails: map['panch_witness_details'] as String? ?? '',
+      grossWeight: map['gross_weight'] as String? ?? '',
+      netWeight: map['net_weight'] as String? ?? '',
+      packagingMarkings: map['packaging_markings'] as String? ?? '',
+      sealSerial: map['seal_serial'] as String? ?? '',
+      supervisorId: map['supervisor_id'] as String?,
+      supervisorSigHex: map['supervisor_sig_hex'] as String?,
       isStage1Synced: map['is_stage1_synced'] ?? 0,
       isStage2Synced: map['is_stage2_synced'] ?? 0,
       isSmsWitnessed: map['is_sms_witnessed'] ?? 0,
@@ -229,6 +284,8 @@ class LocalRecordModel {
     int? isStage1Synced,
     int? isStage2Synced,
     int? isSmsWitnessed,
+    String? supervisorId,
+    String? supervisorSigHex,
   }) {
     return LocalRecordModel(
       testId: testId,
@@ -251,6 +308,17 @@ class LocalRecordModel {
       recordHash: recordHash,
       deviceSigHex: deviceSigHex,
       officerSigHex: officerSigHex,
+      isHighStakes: isHighStakes,
+      firNumber: firNumber,
+      seizureLocation: seizureLocation,
+      substanceDescription: substanceDescription,
+      panchWitnessDetails: panchWitnessDetails,
+      grossWeight: grossWeight,
+      netWeight: netWeight,
+      packagingMarkings: packagingMarkings,
+      sealSerial: sealSerial,
+       supervisorId: supervisorId ?? this.supervisorId,
+       supervisorSigHex: supervisorSigHex ?? this.supervisorSigHex,
       isStage1Synced: isStage1Synced ?? this.isStage1Synced,
       isStage2Synced: isStage2Synced ?? this.isStage2Synced,
       isSmsWitnessed: isSmsWitnessed ?? this.isSmsWitnessed,
