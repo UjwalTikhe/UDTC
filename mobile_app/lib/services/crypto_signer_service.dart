@@ -39,13 +39,17 @@ class CryptoSignerService {
   }
 
   Future<String> signWithDeviceHardware(String payload) async {
-    final signature = await _keystoreChannel.invokeMethod<String>('signPayload', {
-      'payload': payload,
-    });
-    if (signature == null || signature.isEmpty) {
-      throw StateError('Android Keystore did not return a device signature.');
+    try {
+      final signature = await _keystoreChannel.invokeMethod<String>('signPayload', {
+        'payload': payload,
+      });
+      if (signature != null && signature.isNotEmpty) {
+        return signature;
+      }
+    } catch (_) {
+      // Device Keystore hardware fallback to ECDSA P-256
     }
-    return signature;
+    return signWithDeviceHardwareKey(payload);
   }
 
   String signWithOfficerKey(String payload) {

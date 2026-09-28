@@ -1,5 +1,6 @@
 package gov.ncb.fieldtesting
 
+import android.content.pm.PackageManager
 import android.telephony.SmsManager
 import android.os.Build
 import android.security.keystore.KeyGenParameterSpec
@@ -57,17 +58,38 @@ class MainActivity: FlutterActivity() {
                         KeyProperties.KEY_ALGORITHM_EC,
                         "AndroidKeyStore"
                     )
-                    val builder = KeyGenParameterSpec.Builder(
-                        KEY_ALIAS,
-                        KeyProperties.PURPOSE_SIGN or KeyProperties.PURPOSE_VERIFY
-                    )
-                        .setAlgorithmParameterSpec(ECGenParameterSpec("secp256r1"))
-                        .setDigests(KeyProperties.DIGEST_SHA256)
+                    var keyGenerated = false
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                        try { builder.setIsStrongBoxBacked(true) } catch (_: Exception) {}
+                        val hasStrongBox = try {
+                            context.packageManager.hasSystemFeature(PackageManager.FEATURE_STRONGBOX_KEYSTORE)
+                        } catch (_: Exception) { false }
+                        if (hasStrongBox) {
+                            try {
+                                val strongBoxBuilder = KeyGenParameterSpec.Builder(
+                                    KEY_ALIAS,
+                                    KeyProperties.PURPOSE_SIGN or KeyProperties.PURPOSE_VERIFY
+                                )
+                                    .setAlgorithmParameterSpec(ECGenParameterSpec("secp256r1"))
+                                    .setDigests(KeyProperties.DIGEST_SHA256)
+                                    .setIsStrongBoxBacked(true)
+                                generator.initialize(strongBoxBuilder.build())
+                                generator.generateKeyPair()
+                                keyGenerated = true
+                            } catch (_: Exception) {
+                                keyGenerated = false
+                            }
+                        }
                     }
-                    generator.initialize(builder.build())
-                    generator.generateKeyPair()
+                    if (!keyGenerated) {
+                        val standardBuilder = KeyGenParameterSpec.Builder(
+                            KEY_ALIAS,
+                            KeyProperties.PURPOSE_SIGN or KeyProperties.PURPOSE_VERIFY
+                        )
+                            .setAlgorithmParameterSpec(ECGenParameterSpec("secp256r1"))
+                            .setDigests(KeyProperties.DIGEST_SHA256)
+                        generator.initialize(standardBuilder.build())
+                        generator.generateKeyPair()
+                    }
                 }
                 val entry = keyStore.getEntry(KEY_ALIAS, null) as KeyStore.PrivateKeyEntry
                 val signer = Signature.getInstance("SHA256withECDSA")
