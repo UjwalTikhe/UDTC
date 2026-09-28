@@ -34,26 +34,19 @@ class _SplashScreenState extends State<SplashScreen> {
 
       setState(() {
         _isKeystoreReady = true;
-        _statusText = "Checking Statutory Camera & GPS Permissions...";
+        _statusText = "Checking Statutory GPS Permissions...";
       });
 
-      // Request Camera and Location runtime permissions
-      final cameraStatus = await Permission.camera.status;
+      // Check Location runtime permission (Camera is strictly on-demand only)
       final locationStatus = await Permission.locationWhenInUse.status;
 
-      if (!cameraStatus.isGranted || !locationStatus.isGranted) {
-        // Trigger native Android runtime permission prompt
-        final Map<Permission, PermissionStatus> statuses = await [
-          Permission.camera,
-          Permission.locationWhenInUse,
-        ].request();
-
-        if (statuses[Permission.camera]?.isGranted != true ||
-            statuses[Permission.locationWhenInUse]?.isGranted != true) {
+      if (!locationStatus.isGranted) {
+        final status = await Permission.locationWhenInUse.request();
+        if (!status.isGranted) {
           if (!mounted) return;
           setState(() {
             _needsPermissions = true;
-            _statusText = "Permissions Required: Camera & Location access are mandatory under NDPS §52A.";
+            _statusText = "Statutory GPS Permission Required under NDPS §52A for chain-of-custody geotagging.";
           });
           return;
         }
@@ -76,13 +69,8 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _requestPermissionsAgain() async {
-    final Map<Permission, PermissionStatus> statuses = await [
-      Permission.camera,
-      Permission.locationWhenInUse,
-    ].request();
-
-    if (statuses[Permission.camera]?.isGranted == true &&
-        statuses[Permission.locationWhenInUse]?.isGranted == true) {
+    final status = await Permission.locationWhenInUse.request();
+    if (status.isGranted) {
       setState(() => _needsPermissions = false);
       _bootstrapDevice();
     } else {

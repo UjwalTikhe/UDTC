@@ -293,11 +293,11 @@ class _RecordConfirmScreenState extends State<RecordConfirmScreen> {
                     activeColor: GovTheme.primary,
                     title: const Text(
                       "Commercial quantity / high-stakes seizure",
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                     ),
                     subtitle: const Text(
                       "Requires a separate supervisor co-signature before final authorization.",
-                      style: TextStyle(fontSize: 11, color: GovTheme.textSecondary),
+                      style: TextStyle(fontSize: 13, color: GovTheme.textSecondary),
                     ),
                     onChanged: (value) => setState(() => _isHighStakes = value),
                   ),
@@ -315,11 +315,11 @@ class _RecordConfirmScreenState extends State<RecordConfirmScreen> {
                       activeColor: GovTheme.primary,
                       title: const Text(
                         "Accused / Suspect was present during sampling",
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
                       ),
                       subtitle: const Text(
                         "NDPS Act §52A mandatory procedural compliance for admissibility.",
-                        style: TextStyle(fontSize: 11, color: GovTheme.textSecondary),
+                        style: TextStyle(fontSize: 13, color: GovTheme.textSecondary),
                       ),
                       onChanged: (val) {
                         if (val != null) setState(() => _accusedPresent = val);
@@ -341,12 +341,12 @@ class _RecordConfirmScreenState extends State<RecordConfirmScreen> {
                       children: [
                         const Row(
                           children: [
-                            Icon(Icons.enhanced_encryption, color: GovTheme.primary, size: 20),
+                            Icon(Icons.enhanced_encryption, color: GovTheme.primary, size: 22),
                             SizedBox(width: 8),
                             Text(
                               "DUAL-KEY CRYPTOGRAPHIC SIGNING PROTOCOL",
                               style: TextStyle(
-                                fontSize: 12,
+                                fontSize: 14,
                                 fontWeight: FontWeight.w800,
                                 color: GovTheme.primary,
                               ),
@@ -358,7 +358,7 @@ class _RecordConfirmScreenState extends State<RecordConfirmScreen> {
                           "1. Device Signature: Generated via Android Keystore P-256 hardware enclave.\n"
                           "2. Officer Signature: Generated via PIN-derived in-memory ECDSA private key.\n"
                           "3. Ledger Invariant: Computes SHA-256 block hash linked to prior block.",
-                          style: GovTheme.caption.copyWith(color: GovTheme.textPrimary, height: 1.4),
+                          style: GovTheme.caption.copyWith(fontSize: 13, color: GovTheme.textPrimary, height: 1.45),
                         ),
                       ],
                     ),
@@ -369,7 +369,7 @@ class _RecordConfirmScreenState extends State<RecordConfirmScreen> {
                       _signingStatus,
                       textAlign: TextAlign.center,
                       style: const TextStyle(
-                        fontSize: 12.5,
+                        fontSize: 14.5,
                         fontWeight: FontWeight.bold,
                         color: GovTheme.primary,
                       ),
@@ -386,18 +386,18 @@ class _RecordConfirmScreenState extends State<RecordConfirmScreen> {
                 onPressed: _isSigning ? null : _executeDualSignAndAppend,
                 icon: _isSigning
                     ? const SizedBox(
-                        width: 20,
-                        height: 20,
+                        width: 22,
+                        height: 22,
                         child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                       )
-                    : const Icon(Icons.lock_person, color: Colors.white),
+                    : const Icon(Icons.lock_person, color: Colors.white, size: 24),
                 label: Text(
                   _isSigning ? "EXECUTING DUAL SIGNATURE..." : "EXECUTE DUAL-SIGN & APPEND BLOCK",
-                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: Colors.white),
+                  style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: Colors.white, letterSpacing: 0.5),
                 ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: GovTheme.primary,
-                  minimumSize: const Size.fromHeight(GovTheme.primaryButtonHeight),
+                  minimumSize: const Size.fromHeight(56),
                 ),
               ),
             ),
@@ -418,7 +418,7 @@ class _RecordConfirmScreenState extends State<RecordConfirmScreen> {
         Text(
           label,
           style: const TextStyle(
-            fontSize: 11.5,
+            fontSize: 13.5,
             fontWeight: FontWeight.w800,
             color: GovTheme.textPrimary,
             letterSpacing: 0.5,
@@ -427,11 +427,11 @@ class _RecordConfirmScreenState extends State<RecordConfirmScreen> {
         const SizedBox(height: 6),
         TextFormField(
           controller: controller,
-          style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600),
+          style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w600),
           decoration: InputDecoration(
             filled: true,
             fillColor: GovTheme.bgSurface,
-            prefixIcon: Icon(icon, color: GovTheme.primary, size: 20),
+            prefixIcon: Icon(icon, color: GovTheme.primary, size: 22),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
               borderSide: const BorderSide(color: GovTheme.borderDefault),

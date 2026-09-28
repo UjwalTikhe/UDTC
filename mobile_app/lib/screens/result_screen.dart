@@ -64,7 +64,7 @@ class ResultScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: GovTheme.bgBase,
       appBar: AppBar(
-        title: const Text("Assay Classification Result"),
+        title: const Text("Assay Classification Result", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
         automaticallyImplyLeading: false,
       ),
       body: SafeArea(
@@ -88,7 +88,7 @@ class ResultScreen extends StatelessWidget {
                     padding: const EdgeInsets.all(GovTheme.space20),
                     decoration: BoxDecoration(
                       color: badgeBg,
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(10),
                       border: Border.all(color: badgeFg, width: 2.5),
                     ),
                     child: Column(
@@ -96,22 +96,23 @@ class ResultScreen extends StatelessWidget {
                       children: [
                         Row(
                           children: [
-                            Icon(badgeIcon, color: badgeFg, size: 36),
-                            const SizedBox(width: 12),
+                            Icon(badgeIcon, color: badgeFg, size: 40),
+                            const SizedBox(width: 14),
                             Expanded(
                               child: Text(
                                 badgeLabel,
                                 style: TextStyle(
                                   color: badgeFg,
-                                  fontSize: 16,
+                                  fontSize: 18,
                                   fontWeight: FontWeight.w900,
                                   letterSpacing: 0.3,
+                                  height: 1.25,
                                 ),
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 14),
                         const Divider(height: 1, thickness: 1, color: Colors.black12),
                         const SizedBox(height: 12),
                         Row(
@@ -120,7 +121,7 @@ class ResultScreen extends StatelessWidget {
                             Text(
                               "Forensic Match Confidence:",
                               style: TextStyle(
-                                fontSize: 13,
+                                fontSize: 15,
                                 fontWeight: FontWeight.bold,
                                 color: badgeFg.withOpacity(0.9),
                               ),
@@ -128,7 +129,7 @@ class ResultScreen extends StatelessWidget {
                             Text(
                               "${classification.confidence.toStringAsFixed(1)}%",
                               style: TextStyle(
-                                fontSize: 20,
+                                fontSize: 24,
                                 fontWeight: FontWeight.w900,
                                 color: badgeFg,
                               ),
@@ -154,12 +155,12 @@ class ResultScreen extends StatelessWidget {
                         children: [
                           const Row(
                             children: [
-                              Icon(Icons.shield_outlined, color: Color(0xFFB78103), size: 20),
+                              Icon(Icons.shield_outlined, color: Color(0xFFB78103), size: 22),
                               SizedBox(width: 8),
                               Text(
                                 "CROSS-REACTIVE INTERFERENT ADVISORY",
                                 style: TextStyle(
-                                  fontSize: 12.5,
+                                  fontSize: 14.5,
                                   fontWeight: FontWeight.w900,
                                   color: Color(0xFFB78103),
                                   letterSpacing: 0.5,
@@ -167,19 +168,19 @@ class ResultScreen extends StatelessWidget {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 10),
                           ...classification.interferentWarnings.map(
                             (warning) => Padding(
                               padding: const EdgeInsets.only(bottom: 6.0),
                               child: Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text("• ", style: TextStyle(fontWeight: FontWeight.bold)),
+                                  const Text("• ", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.5)),
                                   Expanded(
                                     child: Text(
                                       warning,
                                       style: const TextStyle(
-                                        fontSize: 12.5,
+                                        fontSize: 14.5,
                                         fontWeight: FontWeight.w600,
                                         color: Color(0xFF5D4037),
                                         height: 1.35,
@@ -202,7 +203,7 @@ class ResultScreen extends StatelessWidget {
                       width: double.infinity,
                       decoration: BoxDecoration(
                         color: Colors.black,
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(10),
                         border: Border.all(color: GovTheme.ashokaNavy, width: 2),
                       ),
                       clipBehavior: Clip.antiAlias,
@@ -217,17 +218,17 @@ class ResultScreen extends StatelessWidget {
                             ),
                           ),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
                             color: GovTheme.ashokaNavy,
                             child: Row(
                               children: const [
-                                Icon(Icons.verified, color: Colors.amberAccent, size: 15),
+                                Icon(Icons.verified, color: Colors.amberAccent, size: 18),
                                 SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
                                     "EVIDENCE PHOTO: Live GPS Coordinates & Officer Badge Stamped",
                                     style: TextStyle(
-                                      fontSize: 11,
+                                      fontSize: 13,
                                       fontWeight: FontWeight.bold,
                                       color: Colors.white,
                                     ),
@@ -242,38 +243,52 @@ class ResultScreen extends StatelessWidget {
                     const SizedBox(height: GovTheme.space16),
                   ],
 
-                  // 3. Optical & Forensic Colorimeter Metrics Card (Simplified for Police Officers & Supervisors)
+                  // 3. Optical & Forensic Colorimeter Metrics Card (Clean 2-Column Forensic Report Layout)
                   Container(
-                    padding: const EdgeInsets.all(GovTheme.space16),
+                    padding: const EdgeInsets.all(18),
                     decoration: BoxDecoration(
                       color: GovTheme.bgSurface,
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(10),
                       border: Border.all(color: GovTheme.borderDefault),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.04),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          "FIELD TEST EVIDENCE & ACCURACY",
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w800,
-                            color: GovTheme.textPrimary,
-                            letterSpacing: 0.5,
-                          ),
+                        Row(
+                          children: const [
+                            Icon(Icons.analytics_outlined, color: GovTheme.ashokaNavy, size: 20),
+                            SizedBox(width: 8),
+                            Text(
+                              "FIELD TEST EVIDENCE & ACCURACY",
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w900,
+                                color: GovTheme.ashokaNavy,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 14),
                         _buildMetricRow("Substance Tested", selectedKit.targetSubstance),
                         _buildMetricRow("Field Test Kit", selectedKit.displayName),
                         _buildMetricRow("Reagent Lot No.", reagentBatch),
                         _buildMetricRow("Reference Card Serial", cardSerial),
                         _buildMetricRow(
                           "Color Match Accuracy",
-                          "${classification.confidence.toStringAsFixed(1)}% Match (Variance ΔE: ${deltaE.toStringAsFixed(2)})",
+                          "${classification.confidence.toStringAsFixed(1)}% (ΔE: ${deltaE.toStringAsFixed(2)})",
+                          isHighlighted: true,
                         ),
                         _buildMetricRow(
                           "Photo Clarity / Focus",
-                          "${laplacianVariance.toStringAsFixed(1)} (Sharp & In Focus)",
+                          "${laplacianVariance.toStringAsFixed(1)} (In Focus)",
                         ),
                         _buildMetricRow(
                           "Live GPS Crime Scene",
@@ -282,7 +297,7 @@ class ResultScreen extends StatelessWidget {
                               : "LOCATION UNCONFIRMED",
                           isAlert: !locationConfirmed,
                         ),
-                        _buildMetricRow("Evidence Status", "Digitally Sealed under NDPS §52A"),
+                        _buildMetricRow("Evidence Status", "Digitally Sealed under NDPS §52A", isLast: true),
                       ],
                     ),
                   ),
@@ -290,73 +305,75 @@ class ResultScreen extends StatelessWidget {
               ),
             ),
 
-            // Bottom Actions: Retake vs Confirm & Record
+            // Bottom Actions: Large Touch Target Stacked Buttons (Zero Overlap & Zero Text Wrapping)
             Container(
-              padding: const EdgeInsets.all(GovTheme.space16),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: const BoxDecoration(
                 color: GovTheme.bgSurface,
-                border: Border(top: BorderSide(color: GovTheme.borderDefault)),
+                border: Border(top: BorderSide(color: GovTheme.borderDefault, width: 1.5)),
               ),
-              child: Row(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        minimumSize: const Size.fromHeight(GovTheme.primaryButtonHeight),
-                        foregroundColor: GovTheme.textSecondary,
-                        side: const BorderSide(color: GovTheme.borderDefault, width: 1.5),
-                      ),
-                      onPressed: () {
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => CameraCaptureScreen(
-                              currentUser: currentUser,
-                              selectedKit: selectedKit,
-                              reagentBatch: reagentBatch,
-                              cardSerial: cardSerial,
-                            ),
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: GovTheme.primary,
+                      minimumSize: const Size.fromHeight(54),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      elevation: 2,
+                    ),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => RecordConfirmScreen(
+                            currentUser: currentUser,
+                            selectedKit: selectedKit,
+                            reagentBatch: reagentBatch,
+                            cardSerial: cardSerial,
+                            session: session,
+                            classification: classification,
+                            deltaE: deltaE,
+                            labValues: labValues,
+                            location: location,
+                            locationConfirmed: locationConfirmed,
+                            laplacianVariance: laplacianVariance,
+                            capturedImageFile: capturedImageFile,
                           ),
-                        );
-                      },
-                      icon: const Icon(Icons.refresh, size: 20),
-                      label: const Text("RETAKE CAPTURE", style: TextStyle(fontWeight: FontWeight.bold)),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.verified, color: Colors.white, size: 22),
+                    label: const Text(
+                      "CONFIRM & DUAL-SIGN EVIDENCE",
+                      style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: Colors.white, letterSpacing: 0.5),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    flex: 2,
-                    child: ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: GovTheme.primary,
-                        minimumSize: const Size.fromHeight(GovTheme.primaryButtonHeight),
-                      ),
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => RecordConfirmScreen(
-                              currentUser: currentUser,
-                              selectedKit: selectedKit,
-                              reagentBatch: reagentBatch,
-                              cardSerial: cardSerial,
-                              session: session,
-                              classification: classification,
-                              deltaE: deltaE,
-                              labValues: labValues,
-                              location: location,
-                              locationConfirmed: locationConfirmed,
-                              laplacianVariance: laplacianVariance,
-                              capturedImageFile: capturedImageFile,
-                            ),
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size.fromHeight(46),
+                      foregroundColor: GovTheme.ashokaNavy,
+                      side: const BorderSide(color: GovTheme.borderDefault, width: 1.5),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    onPressed: () {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => CameraCaptureScreen(
+                            currentUser: currentUser,
+                            selectedKit: selectedKit,
+                            reagentBatch: reagentBatch,
+                            cardSerial: cardSerial,
                           ),
-                        );
-                      },
-                      icon: const Icon(Icons.verified, color: Colors.white, size: 20),
-                      label: const Text(
-                        "CONFIRM & DUAL-SIGN",
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.white),
-                      ),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.replay, size: 20),
+                    label: const Text(
+                      "RETAKE CAPTURE / RE-SCAN ASSAY",
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                     ),
                   ),
                 ],
@@ -368,20 +385,44 @@ class ResultScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildMetricRow(String label, String value, {bool isAlert = false}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0),
+  Widget _buildMetricRow(String label, String value, {bool isAlert = false, bool isHighlighted = false, bool isLast = false}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+      decoration: BoxDecoration(
+        color: isHighlighted ? GovTheme.primary.withOpacity(0.05) : Colors.transparent,
+        borderRadius: BorderRadius.circular(6),
+        border: isLast
+            ? null
+            : Border(
+                bottom: BorderSide(color: GovTheme.borderDefault.withOpacity(0.6), width: 0.8),
+              ),
+      ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Text(label, style: GovTheme.caption),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 12.5,
-              fontWeight: FontWeight.w700,
-              fontFamily: value.startsWith("[") || value.startsWith("MHA") ? 'monospace' : 'Roboto',
-              color: isAlert ? GovTheme.alertPositiveText : GovTheme.textPrimary,
+          Expanded(
+            flex: 5,
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 14.5,
+                fontWeight: FontWeight.w600,
+                color: GovTheme.textSecondary,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            flex: 6,
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                fontSize: 14.5,
+                fontWeight: FontWeight.w800,
+                fontFamily: value.startsWith("[") || value.startsWith("MHA") ? 'monospace' : 'Roboto',
+                color: isAlert ? GovTheme.alertPositiveText : GovTheme.textPrimary,
+              ),
             ),
           ),
         ],

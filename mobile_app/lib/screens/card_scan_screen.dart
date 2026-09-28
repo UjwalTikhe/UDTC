@@ -28,6 +28,7 @@ class CardScanScreen extends StatefulWidget {
 class _CardScanScreenState extends State<CardScanScreen> {
   CameraController? _cameraController;
   bool _isCameraInitialized = false;
+  bool _isCameraActive = false;
   String? _cameraError;
   bool _isTorchOn = false;
   bool _isScanning = true;
@@ -37,17 +38,30 @@ class _CardScanScreenState extends State<CardScanScreen> {
   String _lastPayload = "";
   bool _showTorchHint = false;
   Timer? _torchHintTimer;
-  String _scanStatus = "Align Reference Card QR code within reticle frame...";
+  String _scanStatus = "Select camera scanner or use pre-verified reference card below.";
 
   @override
   void initState() {
     super.initState();
-    _initCamera();
-    // 3-second torch reminder if not detected
-    _torchHintTimer = Timer(const Duration(seconds: 3), () {
-      if (mounted && _detectedSerial == null && _mismatchError == null) {
-        setState(() => _showTorchHint = true);
-      }
+    // Camera is NOT started automatically to respect manual camera control.
+  }
+
+  Future<void> _startCameraScanner() async {
+    setState(() {
+      _isCameraActive = true;
+      _cameraError = null;
+    });
+    await _initCamera();
+  }
+
+  Future<void> _stopCameraScanner() async {
+    await _cameraController?.dispose();
+    if (!mounted) return;
+    setState(() {
+      _cameraController = null;
+      _isCameraInitialized = false;
+      _isCameraActive = false;
+      _isTorchOn = false;
     });
   }
 
@@ -61,6 +75,7 @@ class _CardScanScreenState extends State<CardScanScreen> {
         if (mounted) {
           setState(() {
             _cameraError = "Camera permission required to scan reference card.";
+            _isCameraActive = false;
           });
         }
         return;
@@ -68,7 +83,12 @@ class _CardScanScreenState extends State<CardScanScreen> {
 
       final cameras = await availableCameras();
       if (cameras.isEmpty) {
-        if (mounted) setState(() => _cameraError = "No camera hardware detected.");
+        if (mounted) {
+          setState(() {
+            _cameraError = "No camera hardware detected.";
+            _isCameraActive = false;
+          });
+        }
         return;
       }
 
@@ -89,7 +109,10 @@ class _CardScanScreenState extends State<CardScanScreen> {
       });
     } catch (e) {
       if (mounted) {
-        setState(() => _cameraError = "Camera init error: $e");
+        setState(() {
+          _cameraError = "Camera init error: $e";
+          _isCameraActive = false;
+        });
       }
     }
   }
@@ -206,11 +229,21 @@ class _CardScanScreenState extends State<CardScanScreen> {
         title: const Text("Scan Reference Card"),
         backgroundColor: GovTheme.ashokaNavy,
         actions: [
-          IconButton(
-            icon: Icon(_isTorchOn ? Icons.flash_on : Icons.flash_off, color: Colors.amberAccent),
-            tooltip: "Toggle Flashlight",
-            onPressed: _toggleTorch,
-          ),
+          if (_isCameraActive) ...[
+            TextButton.icon(
+              onPressed: _stopCameraScanner,
+              icon: const Icon(Icons.videocam_off, color: Colors.amberAccent, size: 18),
+              label: const Text(
+                "STOP CAMERA",
+                style: TextStyle(color: Colors.amberAccent, fontWeight: FontWeight.bold, fontSize: 11),
+              ),
+            ),
+            IconButton(
+              icon: Icon(_isTorchOn ? Icons.flash_on : Icons.flash_off, color: Colors.amberAccent),
+              tooltip: "Toggle Flashlight",
+              onPressed: _toggleTorch,
+            ),
+          ],
         ],
       ),
       body: SafeArea(
@@ -224,8 +257,8 @@ class _CardScanScreenState extends State<CardScanScreen> {
               child: Stack(
                 alignment: Alignment.center,
                 children: [
-                  // Live Camera Viewfinder or Fallback
-                  if (_isCameraInitialized && _cameraController != null && _cameraController!.value.isInitialized)
+                  // Live Camera Viewfinder or Standby
+                  if (_isCameraActive && _isCameraInitialized && _cameraController != null && _cameraController!.value.isInitialized)
                     Positioned.fill(
                       child: ClipRect(
                         child: FittedBox(
@@ -256,9 +289,9 @@ class _CardScanScreenState extends State<CardScanScreen> {
                               ),
                               const SizedBox(height: 14),
                               ElevatedButton.icon(
-                                onPressed: openAppSettings,
-                                icon: const Icon(Icons.settings, size: 16),
-                                label: const Text("OPEN SETTINGS", style: TextStyle(fontSize: 11)),
+                                onPressed: _startCameraScanner,
+                                icon: const Icon(Icons.refresh, size: 16),
+                                label: const Text("RETRY CAMERA", style: TextStyle(fontSize: 11)),
                                 style: ElevatedButton.styleFrom(backgroundColor: GovTheme.primary),
                               ),
                             ],
@@ -266,7 +299,7 @@ class _CardScanScreenState extends State<CardScanScreen> {
                         ),
                       ),
                     )
-                  else
+                  else if (_isCameraActive)
                     Positioned.fill(
                       child: Container(
                         color: Colors.black,
@@ -277,8 +310,54 @@ class _CardScanScreenState extends State<CardScanScreen> {
                               CircularProgressIndicator(color: GovTheme.primary),
                               SizedBox(height: 12),
                               Text(
-                                "Starting Camera Hardware Sensor...",
+                                "Initializing Camera Hardware Sensor...",
                                 style: TextStyle(color: Colors.white70, fontSize: 11),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    )
+                  else
+                    Positioned.fill(
+                      child: Container(
+                        color: const Color(0xFF0F172A),
+                        padding: const EdgeInsets.all(24),
+                        child: Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(18),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.08),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.videocam_off_outlined, color: Colors.white70, size: 48),
+                              ),
+                              const SizedBox(height: 16),
+                              const Text(
+                                "Camera Sensor Standby (OFF)",
+                                style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
+                              ),
+                              const SizedBox(height: 8),
+                              const Text(
+                                "Camera is not running.\nTurn on camera to scan QR or use pre-verified card buttons below.",
+                                textAlign: TextAlign.center,
+                                style: TextStyle(color: Colors.white70, fontSize: 12, height: 1.4),
+                              ),
+                              const SizedBox(height: 18),
+                              ElevatedButton.icon(
+                                onPressed: _startCameraScanner,
+                                icon: const Icon(Icons.camera_alt, color: Colors.white, size: 18),
+                                label: const Text(
+                                  "TURN ON CAMERA SCANNER",
+                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.white),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: GovTheme.primary,
+                                  padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+                                ),
                               ),
                             ],
                           ),
@@ -287,13 +366,13 @@ class _CardScanScreenState extends State<CardScanScreen> {
                     ),
 
                   // Live Camera Active Badge
-                  if (_isCameraInitialized && _cameraController != null && _cameraController!.value.isInitialized)
+                  if (_isCameraActive && _isCameraInitialized && _cameraController != null && _cameraController!.value.isInitialized)
                     Positioned(
                       top: 12,
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.65),
+                          color: Colors.black.withValues(alpha: 0.65),
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(color: Colors.greenAccent, width: 1),
                         ),
@@ -323,21 +402,22 @@ class _CardScanScreenState extends State<CardScanScreen> {
                       ),
                     ),
 
-                  // Viewfinder Reticle Overlay
-                  Container(
-                    width: 260,
-                    height: 260,
-                    decoration: BoxDecoration(
-                      border: Border.all(
-                        color: _detectedSerial != null
-                            ? GovTheme.alertNegativeText
-                            : (_mismatchError != null
-                                ? GovTheme.alertPositiveText
-                                : GovTheme.tricolorSaffron),
-                        width: 3,
+                  // Viewfinder Reticle Overlay (Only when camera active)
+                  if (_isCameraActive)
+                    Container(
+                      width: 260,
+                      height: 260,
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: _detectedSerial != null
+                              ? GovTheme.alertNegativeText
+                              : (_mismatchError != null
+                                  ? GovTheme.alertPositiveText
+                                  : GovTheme.tricolorSaffron),
+                          width: 3,
+                        ),
+                        borderRadius: BorderRadius.circular(16),
                       ),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
                     child: Stack(
                       children: [
                         Positioned(

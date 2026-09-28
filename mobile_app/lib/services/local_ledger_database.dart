@@ -774,14 +774,78 @@ class LocalLedgerDatabase {
   }
 
   Future<void> seedDefaultUsersIfEmpty() async {
-    return;
-    /*
     final db = await instance.database;
-    final res = await db.query('users', limit: 1);
-    if (res.isEmpty) {
-      // Seed Ujwal Tikhe (PSI)
+
+    // Check and seed default accounts if not present
+    final existingUsers = await db.query('users', columns: ['email']);
+    final existingEmails = existingUsers.map((u) => (u['email'] as String).toLowerCase()).toSet();
+
+    if (!existingEmails.contains("officer@mha.gov.in")) {
       await registerUser(
-        name: "Ujwal Tikhe",
+        name: "PSI Rajesh Kumar",
+        email: "officer@mha.gov.in",
+        badgeNumber: "MHA-NZ-7841",
+        age: 34,
+        gender: "Male",
+        city: "New Delhi",
+        role: Role.officer,
+        password: "Officer@123",
+        department: "Ministry of Home Affairs • Special Task Force",
+        deviceId: "MHA-SECURE-DEV-001",
+        rank: "Police Sub-Inspector (PSI)",
+        unit: "Northern Zone Anti-Narcotics Unit",
+        isVerified: true,
+        serviceId: "MHA-SO-2026-7841",
+        phone: "+91 98990 12345",
+        dob: "1992-03-22",
+      );
+    }
+
+    if (!existingEmails.contains("superintendent@mha.gov.in")) {
+      await registerUser(
+        name: "SP Amitabh Sharma",
+        email: "superintendent@mha.gov.in",
+        badgeNumber: "MHA-SP-1002",
+        age: 48,
+        gender: "Male",
+        city: "New Delhi",
+        role: Role.supervisor,
+        password: "Supervisor@123",
+        department: "Ministry of Home Affairs • Forensic Directorate",
+        deviceId: "MHA-SECURE-DEV-001",
+        rank: "Superintendent of Police (SP)",
+        unit: "Zonal Forensic & Narcotics Directorate",
+        isVerified: true,
+        serviceId: "MHA-SP-2026-004",
+        phone: "+91 98110 98765",
+        dob: "1978-11-05",
+      );
+    }
+
+    if (!existingEmails.contains("supervisor@mha.gov.in")) {
+      await registerUser(
+        name: "SP Amitabh Sharma",
+        email: "supervisor@mha.gov.in",
+        badgeNumber: "MH-1002",
+        age: 48,
+        gender: "Male",
+        city: "New Delhi",
+        role: Role.supervisor,
+        password: "Supervisor@123",
+        department: "Ministry of Home Affairs • Forensic Directorate",
+        deviceId: "MHA-SECURE-DEV-001",
+        rank: "Superintendent of Police (SP)",
+        unit: "Zonal Forensic & Narcotics Directorate",
+        isVerified: true,
+        serviceId: "MHA-SP-2026-004",
+        phone: "+91 98110 98765",
+        dob: "1978-11-05",
+      );
+    }
+
+    if (!existingEmails.contains("ujwal.tikhe@mha.gov.in")) {
+      await registerUser(
+        name: "PSI Ujwal Tikhe",
         email: "ujwal.tikhe@mha.gov.in",
         badgeNumber: "MH-8842",
         age: 28,
@@ -798,51 +862,10 @@ class LocalLedgerDatabase {
         phone: "+91 98765 43210",
         dob: "1998-08-14",
       );
-
-      // Seed Rajesh Kumar (ASI)
-      await registerUser(
-        name: "Rajesh Kumar",
-        email: "officer@mha.gov.in",
-        badgeNumber: "MHA-NZ-7841",
-        age: 34,
-        gender: "Male",
-        city: "New Delhi",
-        role: Role.officer,
-        password: "Officer@123",
-        department: "Ministry of Home Affairs • Forensic Operations Division",
-        deviceId: "MHA-SECURE-DEV-001",
-        rank: "Assistant Sub-Inspector (ASI)",
-        unit: "Northern Zone Field Unit",
-        isVerified: true,
-        serviceId: "MHA-SO-2026-7841",
-        phone: "+91 98990 12345",
-        dob: "1992-03-22",
-      );
-
-      // Seed Amitabh Sharma (SP)
-      await registerUser(
-        name: "Amitabh Sharma",
-        email: "supervisor@mha.gov.in",
-        badgeNumber: "MH-1002",
-        age: 48,
-        gender: "Male",
-        city: "New Delhi",
-        role: Role.supervisor,
-        password: "Supervisor@123",
-        department: "Ministry of Home Affairs • Forensic Directorate",
-        deviceId: "MHA-SECURE-DEV-001",
-        rank: "Superintendent of Police (SP)",
-        unit: "Zonal Forensic Directorate",
-        isVerified: true,
-        serviceId: "MHA-SP-2026-004",
-        phone: "+91 98110 98765",
-        dob: "1978-11-05",
-      );
     }
 
     // Always seed department registry as well
     await seedDepartmentRegistryIfEmpty();
-    */
   }
 
   Future<void> seedDepartmentRegistryIfEmpty() async {

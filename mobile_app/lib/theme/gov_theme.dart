@@ -84,7 +84,7 @@ class GovTheme {
         centerTitle: false,
         titleTextStyle: TextStyle(
           color: Colors.white,
-          fontSize: 18,
+          fontSize: 20,
           fontWeight: FontWeight.w700,
           letterSpacing: 0.2,
         ),
@@ -96,7 +96,7 @@ class GovTheme {
           foregroundColor: Colors.white,
           minimumSize: const Size.fromHeight(primaryButtonHeight),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+          textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 0.5),
           elevation: 1,
         ),
       ),
@@ -106,7 +106,7 @@ class GovTheme {
           side: const BorderSide(color: primary, width: 1.5),
           minimumSize: const Size.fromHeight(primaryButtonHeight),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
       ),
       fontFamily: 'Roboto',
@@ -182,7 +182,7 @@ class GovHeaderBanner extends StatelessWidget {
                         titleText,
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 14,
+                          fontSize: 16,
                           fontWeight: FontWeight.w900,
                           letterSpacing: 0.8,
                         ),
@@ -191,8 +191,8 @@ class GovHeaderBanner extends StatelessWidget {
                       Text(
                         subtitleText,
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.85),
-                          fontSize: 10,
+                          color: Colors.white.withOpacity(0.9),
+                          fontSize: 12,
                           fontWeight: FontWeight.w600,
                           letterSpacing: 0.5,
                         ),
@@ -211,7 +211,7 @@ class GovHeaderBanner extends StatelessWidget {
                     "SECURE",
                     style: TextStyle(
                       color: Colors.amberAccent,
-                      fontSize: 10,
+                      fontSize: 12,
                       fontWeight: FontWeight.w800,
                       letterSpacing: 0.5,
                     ),
@@ -240,7 +240,7 @@ class StatutoryWarningBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
       decoration: BoxDecoration(
         color: GovTheme.alertInconclusiveBg,
         border: Border(
@@ -251,14 +251,14 @@ class StatutoryWarningBanner extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.gavel, color: GovTheme.alertInconclusiveText, size: 20),
+          const Icon(Icons.gavel, color: GovTheme.alertInconclusiveText, size: 22),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               text,
               style: const TextStyle(
                 color: GovTheme.alertInconclusiveText,
-                fontSize: 12.5,
+                fontSize: 14.5,
                 fontWeight: FontWeight.w700,
                 height: 1.35,
               ),
@@ -328,7 +328,7 @@ class GovResultBadge extends StatelessWidget {
                   label,
                   style: TextStyle(
                     color: fgColor,
-                    fontSize: isLarge ? 16 : 12,
+                    fontSize: isLarge ? 18 : 14,
                     fontWeight: FontWeight.w900,
                     letterSpacing: 0.3,
                   ),
@@ -337,7 +337,7 @@ class GovResultBadge extends StatelessWidget {
                   "Forensic Match Confidence: ${confidence.toStringAsFixed(1)}%",
                   style: TextStyle(
                     color: fgColor.withOpacity(0.9),
-                    fontSize: isLarge ? 13 : 10,
+                    fontSize: isLarge ? 15 : 12,
                     fontWeight: FontWeight.w600,
                   ),
                 ),

@@ -429,17 +429,25 @@ class _RecordDetailScreenState extends State<RecordDetailScreen> {
 
   Widget _buildRow(String label, String value, {bool isAlert = false}) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      padding: const EdgeInsets.symmetric(vertical: 5.0),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: GovTheme.caption),
-          Flexible(
+          Expanded(
+            flex: 4,
+            child: Text(
+              label,
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: GovTheme.textSecondary),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            flex: 5,
             child: Text(
               value,
               textAlign: TextAlign.right,
               style: TextStyle(
-                fontSize: 12.5,
+                fontSize: 14.5,
                 fontWeight: FontWeight.bold,
                 color: isAlert ? GovTheme.alertPositiveText : GovTheme.textPrimary,
               ),

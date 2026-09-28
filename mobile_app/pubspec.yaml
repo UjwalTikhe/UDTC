@@ -1,6 +1,6 @@
 name: sih_field_drug_testing
 description: Digital Companion for Field Drug Testing - NCB SIH26231
-version: 1.0.0+1
+version: 1.0.1+2
 
 environment:
   sdk: ">=3.0.0 <4.0.0"

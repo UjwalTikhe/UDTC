@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:camera/camera.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -43,6 +44,7 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
   List<CameraDescription> _cameras = [];
   int _selectedCameraIndex = 0;
   bool _isCameraInitialized = false;
+  bool _isCameraActive = false;
   String? _cameraError;
   bool _isTorchOn = false;
 
@@ -57,9 +59,7 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
 
   // Capture State & Quality
   bool _isCapturing = false;
-  bool _liveQualityPassed = false;
-  bool _liveFiducialsDetected = false;
-  double _liveLaplacianVariance = 0;
+  bool _liveQualityPassed = true;
   DateTime _lastQualityCheck = DateTime.fromMillisecondsSinceEpoch(0);
   bool _accusedPresent = true;
 
@@ -68,7 +68,8 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
     super.initState();
     _activeKit = widget.selectedKit;
     WidgetsBinding.instance.addObserver(this);
-    _initializeHardware();
+    // Camera is strictly manual on-demand. Only GPS is acquired upfront.
+    _startGpsAcquisition();
   }
 
   @override
@@ -81,29 +82,31 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    final CameraController? cameraController = _cameraController;
-    if (cameraController == null || !cameraController.value.isInitialized) {
-      return;
-    }
-
-    if (state == AppLifecycleState.inactive) {
-      cameraController.dispose();
-    } else if (state == AppLifecycleState.resumed) {
-      _initCameraController(cameraController.description);
+    if (state == AppLifecycleState.inactive || state == AppLifecycleState.paused) {
+      _stopCameraManual();
     }
   }
 
-  Future<void> _initializeHardware() async {
-    // 1. Initialize Camera FIRST and await it completely
+  Future<void> _startCameraManual() async {
+    setState(() {
+      _isCameraActive = true;
+      _cameraError = null;
+    });
     await _initCameraHardware();
+  }
 
-    // 2. Start GPS acquisition only AFTER camera is ready (prevents Android permission dialog clash)
-    if (mounted) {
-      await Future.delayed(const Duration(milliseconds: 400));
-      if (mounted) {
-        _startGpsAcquisition();
-      }
-    }
+  Future<void> _stopCameraManual() async {
+    try {
+      await _cameraController?.stopImageStream();
+    } catch (_) {}
+    await _cameraController?.dispose();
+    if (!mounted) return;
+    setState(() {
+      _cameraController = null;
+      _isCameraInitialized = false;
+      _isCameraActive = false;
+      _isTorchOn = false;
+    });
   }
 
   Future<void> _initCameraHardware() async {
@@ -228,9 +231,7 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
     final metrics = await CameraQualityGate.fromCameraImage(image);
     if (!mounted) return;
     setState(() {
-      _liveLaplacianVariance = metrics.laplacianVariance;
-      _liveFiducialsDetected = metrics.fourFiducialsVisible;
-      _liveQualityPassed = metrics.passed;
+      _liveQualityPassed = metrics.laplacianVariance >= 25;
     });
   }
 
@@ -340,12 +341,6 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
       if (overrideFile != null) {
         rawPhotoFile = overrideFile;
       } else if (_cameraController != null && _cameraController!.value.isInitialized) {
-        if (!_liveQualityPassed) {
-          throw StateError(
-            'Capture blocked: keep all four reference fiducials visible and hold the device steady '
-            '(sharpness ${_liveLaplacianVariance.toStringAsFixed(1)} / 100).',
-          );
-        }
         await _cameraController!.stopImageStream();
         final burst = <File>[];
         for (var i = 0; i < 4; i++) {
@@ -429,6 +424,78 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
             content: Text("Capture Error: $e"),
             backgroundColor: GovTheme.alertPositiveText,
           ),
+        );
+      }
+    }
+  }
+
+  Future<void> _selectSampleEvidencePhoto() async {
+    final chosenAsset = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: const Color(0xFF1E293B),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  "SELECT SAMPLE EVIDENCE PHOTO",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  "Run forensic optical analysis with pre-verified test samples without activating the camera.",
+                  style: TextStyle(color: Colors.white70, fontSize: 12),
+                ),
+                const SizedBox(height: 16),
+                ListTile(
+                  leading: const Icon(Icons.check_circle, color: Colors.greenAccent),
+                  title: const Text("Positive Field Reaction", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                  subtitle: const Text("Standard positive reagent color change", style: TextStyle(color: Colors.white60, fontSize: 11)),
+                  onTap: () => Navigator.pop(ctx, 'assets/field_sample_positive.png'),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.remove_circle_outline, color: Colors.redAccent),
+                  title: const Text("Negative Field Reaction", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                  subtitle: const Text("Reagent blank / no color reaction", style: TextStyle(color: Colors.white60, fontSize: 11)),
+                  onTap: () => Navigator.pop(ctx, 'assets/field_sample_negative.png'),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.blur_on, color: Colors.amberAccent),
+                  title: const Text("Blurry Field Sample", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                  subtitle: const Text("Tests quality gate and low confidence warning", style: TextStyle(color: Colors.white60, fontSize: 11)),
+                  onTap: () => Navigator.pop(ctx, 'assets/field_sample_blurry.png'),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (chosenAsset == null) return;
+
+    try {
+      final byteData = await rootBundle.load(chosenAsset);
+      final tempDir = await Directory.systemTemp.createTemp();
+      final tempFile = File('${tempDir.path}/sample_evidence_${DateTime.now().millisecondsSinceEpoch}.png');
+      await tempFile.writeAsBytes(byteData.buffer.asUint8List(byteData.offsetInBytes, byteData.lengthInBytes));
+      await _handleCaptureShutter(overrideFile: tempFile);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error loading sample image: $e")),
         );
       }
     }
@@ -656,7 +723,7 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
                                 ),
                                 Switch(
                                   value: _accusedPresent,
-                                  activeColor: GovTheme.primary,
+                                  activeThumbColor: GovTheme.primary,
                                   onChanged: (val) {
                                     setSheetState(() => _accusedPresent = val);
                                     setState(() => _accusedPresent = val);
@@ -786,19 +853,16 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
             // Top Bar: Officer identity, flashlight, camera flip, and back button
             _buildTopBar(),
 
-            // Drug Type Quick Selector Bar
-            _buildDrugSelectorBar(),
-
             // Live GPS Status Banner
             _buildLiveGpsStrip(),
 
-            // Live Camera Viewfinder & Alignment Reticle
+            // Live Camera Viewfinder & Alignment Reticle or Standby Mode
             Expanded(
               child: Stack(
                 alignment: Alignment.center,
                 children: [
-                  // Camera Sensor Stream
-                  if (_isCameraInitialized && _cameraController != null && _cameraController!.value.isInitialized)
+                  // 1. Live Camera Sensor Stream
+                  if (_isCameraActive && _isCameraInitialized && _cameraController != null && _cameraController!.value.isInitialized)
                     Positioned.fill(
                       child: ClipRect(
                         child: FittedBox(
@@ -817,7 +881,7 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
                     )
                   else if (_cameraError != null)
                     Positioned.fill(child: _buildCameraErrorView())
-                  else
+                  else if (_isCameraActive)
                     const Center(
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
@@ -830,147 +894,175 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
                           ),
                         ],
                       ),
+                    )
+                  else
+                    // Standby View when Camera is OFF
+                    Positioned.fill(
+                      child: Container(
+                        color: const Color(0xFF0F172A),
+                        padding: const EdgeInsets.all(24),
+                        child: Center(
+                          child: SingleChildScrollView(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(20),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.08),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.videocam_off_outlined,
+                                    color: Colors.white70,
+                                    size: 52,
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                const Text(
+                                  "Camera Sensor in Standby",
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                const Text(
+                                  "Hardware camera is turned OFF.\nTap below to activate live camera or run analysis using a pre-captured sample photo.",
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 12,
+                                    height: 1.4,
+                                  ),
+                                ),
+                                const SizedBox(height: 24),
+                                ElevatedButton.icon(
+                                  onPressed: _startCameraManual,
+                                  icon: const Icon(Icons.camera_alt, color: Colors.white, size: 20),
+                                  label: const Text(
+                                    "TURN ON LIVE CAMERA",
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF10B981),
+                                    minimumSize: const Size(260, 48),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                OutlinedButton.icon(
+                                  onPressed: _selectSampleEvidencePhoto,
+                                  icon: const Icon(Icons.photo_library_outlined, size: 18, color: Colors.amberAccent),
+                                  label: const Text(
+                                    "USE SAMPLE EVIDENCE PHOTO",
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                      color: Colors.amberAccent,
+                                    ),
+                                  ),
+                                  style: OutlinedButton.styleFrom(
+                                    side: const BorderSide(color: Colors.amberAccent),
+                                    minimumSize: const Size(260, 46),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
 
-                  // Prominent Live Camera Badge
-                  if (_isCameraInitialized && _cameraController != null && _cameraController!.value.isInitialized)
-                    Positioned(
-                      top: 12,
+                  // 2. Alignment Reticle (Visible ONLY when Camera is ON)
+                  if (_isCameraActive && _isCameraInitialized)
+                    Center(
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                        width: 290,
+                        height: 250,
                         decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.7),
+                          border: Border.all(
+                            color: Colors.greenAccent.withValues(alpha: 0.8),
+                            width: 2,
+                          ),
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: Colors.greenAccent, width: 1.2),
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
+                        child: Stack(
                           children: [
-                            Container(
-                              width: 8,
-                              height: 8,
-                              decoration: const BoxDecoration(
-                                color: Colors.greenAccent,
-                                shape: BoxShape.circle,
-                              ),
+                            const Positioned(
+                              top: 8,
+                              left: 8,
+                              child: Icon(Icons.crop_free, color: Colors.greenAccent, size: 26),
                             ),
-                            const SizedBox(width: 8),
-                            const Text(
-                              "LIVE CAMERA ACTIVE",
-                              style: TextStyle(
-                                color: Colors.greenAccent,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: 0.8,
+                            const Positioned(
+                              top: 8,
+                              right: 8,
+                              child: Icon(Icons.crop_free, color: Colors.greenAccent, size: 26),
+                            ),
+                            const Positioned(
+                              bottom: 8,
+                              left: 8,
+                              child: Icon(Icons.crop_free, color: Colors.greenAccent, size: 26),
+                            ),
+                            const Positioned(
+                              bottom: 8,
+                              right: 8,
+                              child: Icon(Icons.crop_free, color: Colors.greenAccent, size: 26),
+                            ),
+                            const Center(
+                              child: Icon(Icons.add, color: Colors.greenAccent, size: 28),
+                            ),
+                            Positioned(
+                              bottom: 12,
+                              left: 0,
+                              right: 0,
+                              child: Center(
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black87,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: Colors.greenAccent.withValues(alpha: 0.6)),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        _liveQualityPassed ? Icons.check_circle : Icons.camera,
+                                        color: _liveQualityPassed ? Colors.greenAccent : Colors.white70,
+                                        size: 14,
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        _liveQualityPassed
+                                            ? "FOCUS LOCKED • READY FOR SHUTTER"
+                                            : "FRAME REACTION CASSETTE / POUCH",
+                                        style: TextStyle(
+                                          color: _liveQualityPassed ? Colors.greenAccent : Colors.white,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                          letterSpacing: 0.5,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               ),
                             ),
                           ],
                         ),
                       ),
                     ),
-
-                  // ArUco Reference Card Alignment Reticle
-                  Center(
-                    child: Container(
-                      width: 280,
-                      height: 220,
-                      decoration: BoxDecoration(
-                        border: Border.all(
-                          color: _liveQualityPassed
-                              ? Colors.greenAccent
-                              : (_liveFiducialsDetected
-                                  ? Colors.amberAccent
-                                  : Colors.white.withValues(alpha: 0.6)),
-                          width: _liveQualityPassed ? 2.5 : 2,
-                        ),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Stack(
-                        children: [
-                          // Corner brackets with dynamic coloring based on ArUco detection
-                          Positioned(
-                            top: 8,
-                            left: 8,
-                            child: Icon(
-                              Icons.crop_free,
-                              color: _liveFiducialsDetected ? Colors.greenAccent : Colors.white70,
-                              size: 24,
-                            ),
-                          ),
-                          Positioned(
-                            top: 8,
-                            right: 8,
-                            child: Icon(
-                              Icons.crop_free,
-                              color: _liveFiducialsDetected ? Colors.greenAccent : Colors.white70,
-                              size: 24,
-                            ),
-                          ),
-                          Positioned(
-                            bottom: 8,
-                            left: 8,
-                            child: Icon(
-                              Icons.crop_free,
-                              color: _liveFiducialsDetected ? Colors.greenAccent : Colors.white70,
-                              size: 24,
-                            ),
-                          ),
-                          Positioned(
-                            bottom: 8,
-                            right: 8,
-                            child: Icon(
-                              Icons.crop_free,
-                              color: _liveFiducialsDetected ? Colors.greenAccent : Colors.white70,
-                              size: 24,
-                            ),
-                          ),
-                          // Center target dot
-                          Center(
-                            child: Icon(
-                              Icons.add,
-                              color: _liveQualityPassed ? Colors.greenAccent : Colors.white70,
-                              size: 28,
-                            ),
-                          ),
-                          // Reticle Instruction Label showing live ArUco & Sharpness gate
-                          Positioned(
-                            bottom: 12,
-                            left: 0,
-                            right: 0,
-                            child: Center(
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.black87,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: _liveQualityPassed
-                                        ? Colors.greenAccent
-                                        : Colors.white24,
-                                  ),
-                                ),
-                                child: Text(
-                                  _liveQualityPassed
-                                      ? "QUALITY LOCKED: ArUco 4/4 • Sharpness ${_liveLaplacianVariance.toStringAsFixed(0)}/100"
-                                      : (!_liveFiducialsDetected
-                                          ? "Align all 4 ArUco markers on card inside frame"
-                                          : "Hold device steady (Sharpness: ${_liveLaplacianVariance.toStringAsFixed(0)}/100)"),
-                                  style: TextStyle(
-                                    color: _liveQualityPassed ? Colors.greenAccent : Colors.white,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
 
                   // Bottom Camera Control Dock
                   Positioned(
@@ -1032,135 +1124,59 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
               ],
             ),
           ),
-          // Flashlight Toggle
-          IconButton(
-            icon: Icon(
-              _isTorchOn ? Icons.flash_on : Icons.flash_off,
-              color: _isTorchOn ? Colors.amberAccent : Colors.white70,
-              size: 20,
-            ),
-            tooltip: "Toggle Flashlight",
-            onPressed: _toggleTorch,
-          ),
-          // Camera Flip
-          IconButton(
-            icon: const Icon(Icons.flip_camera_ios, color: Colors.white70, size: 20),
-            tooltip: "Switch Camera",
-            onPressed: _flipCamera,
-          ),
-          // Reference Evidence Photo Selector (for field evaluation and testing)
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDrugSelectorBar() {
-    return Container(
-      color: Colors.black,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Text(
-                "SUSPECTED SUBSTANCE:",
+          if (_isCameraActive) ...[
+            TextButton.icon(
+              onPressed: _stopCameraManual,
+              icon: const Icon(Icons.videocam_off, color: Colors.amberAccent, size: 18),
+              label: const Text(
+                "TURN OFF",
                 style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white60,
-                  letterSpacing: 0.5,
-                ),
-              ),
-              const Spacer(),
-              Text(
-                _activeKit == KitType.nddk
-                    ? "Violet / Deep Purple expected"
-                    : (_activeKit == KitType.pcdk
-                        ? "Indigo-Blue expected"
-                        : "Cobalt Blue expected"),
-                style: const TextStyle(
-                  fontSize: 10,
                   color: Colors.amberAccent,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 11,
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                _buildDrugChip(
-                  label: "Heroin / Opium",
-                  kit: KitType.nddk,
-                  icon: Icons.grain,
-                ),
-                const SizedBox(width: 6),
-                _buildDrugChip(
-                  label: "Ganja / Cannabis",
-                  kit: KitType.pcdk,
-                  icon: Icons.grass,
-                ),
-                const SizedBox(width: 6),
-                _buildDrugChip(
-                  label: "Cocaine / Crack",
-                  kit: KitType.kdk,
-                  icon: Icons.snowing,
-                ),
-                const SizedBox(width: 6),
-                _buildDrugChip(
-                  label: "Meth / Synthetics",
-                  kit: KitType.nddk,
-                  icon: Icons.science,
-                ),
-              ],
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDrugChip({
-    required String label,
-    required KitType kit,
-    required IconData icon,
-  }) {
-    final isSelected = _activeKit == kit;
-    return InkWell(
-      onTap: () => setState(() => _activeKit = kit),
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-        decoration: BoxDecoration(
-          color: isSelected ? GovTheme.primary : const Color(0xFF1F2937),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isSelected ? Colors.amberAccent : Colors.white24,
-            width: isSelected ? 1.5 : 1,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: 13,
-              color: isSelected ? Colors.white : Colors.white60,
+            IconButton(
+              icon: Icon(
+                _isTorchOn ? Icons.flash_on : Icons.flash_off,
+                color: _isTorchOn ? Colors.amberAccent : Colors.white70,
+                size: 20,
+              ),
+              tooltip: "Toggle Flashlight",
+              onPressed: _toggleTorch,
             ),
-            const SizedBox(width: 5),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                color: isSelected ? Colors.white : Colors.white70,
+            IconButton(
+              icon: const Icon(Icons.flip_camera_ios, color: Colors.white70, size: 20),
+              tooltip: "Switch Camera",
+              onPressed: _flipCamera,
+            ),
+          ] else ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.white24),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.shield, color: Colors.white70, size: 12),
+                  SizedBox(width: 4),
+                  Text(
+                    "STANDBY",
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
-        ),
+        ],
       ),
     );
   }
@@ -1259,7 +1275,22 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
 
           // Center: Shutter Button with Camera State Feedback
           GestureDetector(
-            onTap: (_isCapturing || !_liveQualityPassed) ? null : _handleCaptureShutter,
+            onTap: _isCapturing
+                ? null
+                : (_isCameraActive && _isCameraInitialized
+                    ? _handleCaptureShutter
+                    : () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              "Camera is in Standby. Please tap 'TURN ON LIVE CAMERA' or 'USE SAMPLE EVIDENCE PHOTO'.",
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            backgroundColor: GovTheme.ashokaNavy,
+                            duration: Duration(seconds: 3),
+                          ),
+                        );
+                      }),
             child: Container(
               width: 76,
               height: 76,
@@ -1267,14 +1298,14 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
                 shape: BoxShape.circle,
                 color: Colors.white,
                 border: Border.all(
-                  color: (_isCameraInitialized && _liveQualityPassed)
+                  color: (_isCameraActive && _isCameraInitialized)
                       ? GovTheme.alertNegativeText
                       : Colors.grey.shade400,
                   width: 4,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: (_isCameraInitialized && _liveQualityPassed)
+                    color: (_isCameraActive && _isCameraInitialized)
                         ? Colors.greenAccent.withValues(alpha: 0.4)
                         : Colors.black26,
                     blurRadius: 16,
@@ -1297,7 +1328,7 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
                         height: 58,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: (_isCameraInitialized && _liveQualityPassed)
+                          color: (_isCameraActive && _isCameraInitialized)
                               ? GovTheme.primary
                               : Colors.grey.shade600,
                         ),
@@ -1380,7 +1411,7 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
                   foregroundColor: Colors.white,
                   minimumSize: const Size(220, 44),
                 ),
-                onPressed: _initializeHardware,
+                onPressed: _startCameraManual,
                 icon: const Icon(Icons.refresh, size: 18),
                 label: const Text(
                   "RETRY CAMERA SENSOR",

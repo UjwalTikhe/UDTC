@@ -13,6 +13,7 @@ import 'record_detail_screen.dart';
 import 'sync_status_screen.dart';
 import 'approval_queue_screen.dart';
 import 'profile_settings_screen.dart';
+import 'login_screen.dart';
 
 /// Screen 3: Official Home / Dashboard Screen
 /// GIGW 3.0 / WCAG 2.1 AA compliant operational portal for MHA field officers and supervisors.
@@ -113,109 +114,64 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Scaffold(
       backgroundColor: GovTheme.bgBase,
       appBar: AppBar(
-        title: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: () async {
-            final updatedUser = await Navigator.push<User>(
-              context,
-              MaterialPageRoute(
-                builder: (_) => ProfileSettingsScreen(currentUser: _user),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(3),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
               ),
-            );
-            if (updatedUser != null && mounted) {
-              setState(() => _user = updatedUser);
-            }
-          },
-          child: InkWell(
-            borderRadius: BorderRadius.circular(8),
-            onTap: () async {
-              final updatedUser = await Navigator.push<User>(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => ProfileSettingsScreen(currentUser: _user),
-                ),
-              );
-              if (updatedUser != null && mounted) {
-                setState(() => _user = updatedUser);
-              }
-            },
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
-              child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(3),
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Image.asset(
-                    'assets/mha_emblem.png',
-                    height: 28,
-                    width: 28,
-                    fit: BoxFit.contain,
-                    errorBuilder: (_, __, ___) => const Icon(Icons.shield, color: Colors.amberAccent, size: 20),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Flexible(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Flexible(
-                            child: Text(
-                              _user.name.isNotEmpty ? _user.name : "MHA Field Companion",
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          const Icon(Icons.arrow_drop_down, color: Colors.white70, size: 18),
-                        ],
-                      ),
-                      Text(
-                        "${_user.badgeNumber} • ${_user.role.name.toUpperCase()}",
-                        style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.85)),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+              child: Image.asset(
+                'assets/mha_emblem.png',
+                height: 32,
+                width: 32,
+                fit: BoxFit.contain,
+                errorBuilder: (_, __, ___) => const Icon(Icons.shield, color: Colors.amberAccent, size: 24),
+              ),
             ),
-          ),
+            const SizedBox(width: 12),
+            Flexible(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    "MHA FIELD PORTAL",
+                    style: TextStyle(fontWeight: FontWeight.w900, fontSize: 17, letterSpacing: 0.6),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    "Narcotics Enforcement • NDPS §52A",
+                    style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.9)),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
-      ),
-      actions: [
+        actions: [
           IconButton(
             icon: _isSyncing
                 ? const SizedBox(
-                    width: 18,
-                    height: 18,
+                    width: 20,
+                    height: 20,
                     child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                   )
-                : const Icon(Icons.sync),
+                : const Icon(Icons.sync, size: 24),
             tooltip: "Sync Pending Records",
             onPressed: _isSyncing ? null : _triggerManualSync,
           ),
           IconButton(
-            icon: const Icon(Icons.account_circle),
-            tooltip: "Officer Profile & Settings",
-            onPressed: () async {
-              final updatedUser = await Navigator.push<User>(
+            icon: const Icon(Icons.logout, size: 22),
+            tooltip: "Switch Officer / Log Out",
+            onPressed: () {
+              Navigator.pushReplacement(
                 context,
-                MaterialPageRoute(
-                  builder: (_) => ProfileSettingsScreen(currentUser: _user),
-                ),
+                MaterialPageRoute(builder: (_) => const LoginScreen()),
               );
-              if (updatedUser != null && mounted) {
-                setState(() => _user = updatedUser);
-              }
             },
           ),
         ],
@@ -235,9 +191,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       child: ListView(
                         padding: const EdgeInsets.all(GovTheme.space16),
                         children: [
-                          // 1. Officer Credentials & Device Binding Strip (Clickable to open profile)
+                          // 1. Officer Credentials & Device Binding Strip (Tappable to manage profile)
                           InkWell(
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(10),
                             onTap: () async {
                               final updatedUser = await Navigator.push<User>(
                                 context,
@@ -250,30 +206,37 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               }
                             },
                             child: Container(
-                              padding: const EdgeInsets.all(GovTheme.space16),
+                              padding: const EdgeInsets.all(16),
                               decoration: BoxDecoration(
                                 color: GovTheme.bgSurface,
-                                borderRadius: BorderRadius.circular(8),
+                                borderRadius: BorderRadius.circular(10),
                                 border: Border.all(
-                                  color: _user.isVerified ? GovTheme.borderDefault : Colors.amber.shade400,
-                                  width: _user.isVerified ? 1 : 1.5,
+                                  color: _user.isVerified ? const Color(0xFF81C784) : Colors.amber.shade400,
+                                  width: 1.5,
                                 ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.04),
+                                    blurRadius: 6,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
                               ),
                               child: Row(
                                 children: [
                                   Container(
-                                    padding: const EdgeInsets.all(10),
+                                    padding: const EdgeInsets.all(12),
                                     decoration: BoxDecoration(
-                                      color: (_user.isVerified ? GovTheme.primary : Colors.amber.shade700).withOpacity(0.08),
+                                      color: (_user.isVerified ? Colors.green : Colors.amber.shade700).withOpacity(0.1),
                                       shape: BoxShape.circle,
                                     ),
                                     child: Icon(
                                       _user.isVerified ? Icons.badge : Icons.pending_actions,
-                                      color: _user.isVerified ? GovTheme.primary : Colors.amber.shade800,
-                                      size: 26,
+                                      color: _user.isVerified ? const Color(0xFF2E7D32) : Colors.amber.shade900,
+                                      size: 28,
                                     ),
                                   ),
-                                  const SizedBox(width: 12),
+                                  const SizedBox(width: 14),
                                   Expanded(
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -281,24 +244,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                         Text(
                                           _user.name.isNotEmpty ? _user.name : _user.badgeNumber,
                                           style: const TextStyle(
-                                            fontSize: 15,
+                                            fontSize: 17,
                                             fontWeight: FontWeight.w900,
                                             color: GovTheme.ashokaNavy,
                                           ),
                                         ),
-                                        const SizedBox(height: 2),
+                                        const SizedBox(height: 3),
                                         Text(
                                           "${_user.rank} • Badge: ${_user.badgeNumber}",
                                           style: const TextStyle(
-                                            fontSize: 11,
+                                            fontSize: 13,
                                             fontWeight: FontWeight.w600,
                                             color: GovTheme.textPrimary,
                                           ),
                                         ),
-                                        const SizedBox(height: 1),
+                                        const SizedBox(height: 2),
                                         Text(
                                           "${_user.unit} • ${_user.city}",
-                                          style: GovTheme.caption,
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            color: GovTheme.textSecondary,
+                                          ),
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
                                         ),
@@ -306,12 +272,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     ),
                                   ),
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                                     decoration: BoxDecoration(
-                                      color: _user.isVerified ? Colors.green.shade50 : Colors.amber.shade50,
-                                      borderRadius: BorderRadius.circular(4),
+                                      color: _user.isVerified ? const Color(0xFFE8F5E9) : Colors.amber.shade50,
+                                      borderRadius: BorderRadius.circular(6),
                                       border: Border.all(
-                                        color: _user.isVerified ? Colors.green.shade600 : Colors.amber.shade700,
+                                        color: _user.isVerified ? const Color(0xFF4CAF50) : Colors.amber.shade700,
+                                        width: 1.2,
                                       ),
                                     ),
                                     child: Row(
@@ -319,16 +286,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                       children: [
                                         Icon(
                                           _user.isVerified ? Icons.verified : Icons.warning_amber_rounded,
-                                          size: 12,
-                                          color: _user.isVerified ? Colors.green.shade700 : Colors.amber.shade900,
+                                          size: 14,
+                                          color: _user.isVerified ? const Color(0xFF2E7D32) : Colors.amber.shade900,
                                         ),
-                                        const SizedBox(width: 4),
+                                        const SizedBox(width: 5),
                                         Text(
                                           _user.isVerified ? "VERIFIED" : "VERIFY NOW",
                                           style: TextStyle(
-                                            fontSize: 10,
+                                            fontSize: 11,
                                             fontWeight: FontWeight.w900,
-                                            color: _user.isVerified ? Colors.green.shade800 : Colors.amber.shade900,
+                                            letterSpacing: 0.5,
+                                            color: _user.isVerified ? const Color(0xFF1B5E20) : Colors.amber.shade900,
                                           ),
                                         ),
                                       ],
@@ -344,54 +312,54 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           ElevatedButton.icon(
                             style: ElevatedButton.styleFrom(
                               backgroundColor: GovTheme.primary,
-                              minimumSize: const Size.fromHeight(56),
+                              minimumSize: const Size.fromHeight(62),
                               elevation: 3,
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
+                                borderRadius: BorderRadius.circular(10),
                               ),
                             ),
                             onPressed: _startNewTest,
-                            icon: const Icon(Icons.camera_alt, color: Colors.white, size: 24),
+                            icon: const Icon(Icons.camera_alt, color: Colors.white, size: 26),
                             label: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: const [
                                 Text(
                                   "START FIELD TEST (CAMERA & GPS)",
                                   style: TextStyle(
-                                    fontSize: 14,
+                                    fontSize: 16,
                                     fontWeight: FontWeight.w900,
                                     letterSpacing: 0.5,
                                     color: Colors.white,
                                   ),
                                 ),
-                                SizedBox(height: 2),
+                                SizedBox(height: 3),
                                 Text(
                                   "Instant Camera Shutter • Live GPS Geolocation",
                                   style: TextStyle(
-                                    fontSize: 10,
+                                    fontSize: 12,
                                     color: Colors.white70,
                                   ),
                                 ),
                               ],
                             ),
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 10),
 
                           // Secondary: Multi-step Lab Protocol
                           OutlinedButton.icon(
                             style: OutlinedButton.styleFrom(
-                              minimumSize: const Size.fromHeight(42),
-                              side: const BorderSide(color: GovTheme.borderDefault),
+                              minimumSize: const Size.fromHeight(48),
+                              side: const BorderSide(color: GovTheme.borderDefault, width: 1.5),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(8),
                               ),
                             ),
                             onPressed: _startLabProtocol,
-                            icon: const Icon(Icons.science_outlined, size: 16, color: GovTheme.ashokaNavy),
+                            icon: const Icon(Icons.science_outlined, size: 18, color: GovTheme.ashokaNavy),
                             label: const Text(
                               "Standard 6-Step Lab Protocol (Kit Selection)",
                               style: TextStyle(
-                                fontSize: 11,
+                                fontSize: 13,
                                 fontWeight: FontWeight.bold,
                                 color: GovTheme.ashokaNavy,
                               ),
@@ -419,57 +387,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               ),
                             ],
                           ),
-                          const SizedBox(height: GovTheme.space16),
-
-                          // 4. SHA-256 Ledger Health Card
-                          Container(
-                            padding: const EdgeInsets.all(GovTheme.space16),
-                            decoration: BoxDecoration(
-                              color: GovTheme.bgSurface,
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: GovTheme.borderDefault),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Icon(
-                                      _integrityReport?.isValid == true ? Icons.verified : Icons.gpp_bad,
-                                      color: _integrityReport?.isValid == true
-                                          ? GovTheme.alertNegativeText
-                                          : GovTheme.alertPositiveText,
-                                      size: 20,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    const Text(
-                                      "RECURSIVE LEDGER CHAIN INTEGRITY",
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w800,
-                                        color: GovTheme.textPrimary,
-                                      ),
-                                    ),
-                                    const Spacer(),
-                                    Text(
-                                      "${_integrityReport?.verifiedBlocks ?? 0} BLOCKS INTACT",
-                                      style: const TextStyle(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold,
-                                        color: GovTheme.alertNegativeText,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  "Head Hash: ${_topHash.length > 28 ? _topHash.substring(0, 28) : _topHash}...",
-                                  style: GovTheme.codeHash.copyWith(fontSize: 11, color: GovTheme.textSecondary),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: GovTheme.space24),
+                          const SizedBox(height: GovTheme.space20),
 
                           // 5. Functional Navigation Grid
                           Row(
@@ -665,7 +583,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
         decoration: BoxDecoration(
           color: GovTheme.bgSurface,
           borderRadius: BorderRadius.circular(8),
@@ -673,11 +591,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
         child: Column(
           children: [
-            Icon(icon, size: 20, color: textColor),
-            const SizedBox(height: 4),
-            Text(value, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: textColor)),
-            const SizedBox(height: 2),
-            Text(label, style: const TextStyle(fontSize: 10, color: GovTheme.textSecondary), textAlign: TextAlign.center),
+            Icon(icon, size: 22, color: textColor),
+            const SizedBox(height: 5),
+            Text(value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: textColor)),
+            const SizedBox(height: 3),
+            Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: GovTheme.textSecondary), textAlign: TextAlign.center),
           ],
         ),
       ),
@@ -703,20 +621,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
                 color: GovTheme.primary.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(6),
+                borderRadius: BorderRadius.circular(8),
               ),
-              child: Icon(icon, color: GovTheme.primary, size: 22),
+              child: Icon(icon, color: GovTheme.primary, size: 24),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-                  Text(subtitle, style: const TextStyle(fontSize: 10.5, color: GovTheme.textSecondary)),
+                  Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: GovTheme.ashokaNavy)),
+                  const SizedBox(height: 2),
+                  Text(subtitle, style: const TextStyle(fontSize: 12.5, color: GovTheme.textSecondary)),
                 ],
               ),
             ),
