@@ -54,7 +54,6 @@ class _ProcessingScreenState extends State<ProcessingScreen> {
     try {
       // Step 1: Decode & Blur Check
       setState(() => _currentStepIndex = 0);
-      await Future.delayed(const Duration(milliseconds: 300));
 
       final input = OpticalAnalysisInput(
         imagePath: widget.captureResult.capturedImageFile.path,
@@ -69,22 +68,18 @@ class _ProcessingScreenState extends State<ProcessingScreen> {
       // Step 2: White Balance
       if (!mounted) return;
       setState(() => _currentStepIndex = 1);
-      await Future.delayed(const Duration(milliseconds: 250));
 
       // Step 3: ROI Isolation
       if (!mounted) return;
       setState(() => _currentStepIndex = 2);
-      await Future.delayed(const Duration(milliseconds: 250));
 
       // Step 4: CIE Lab & DeltaE
       if (!mounted) return;
       setState(() => _currentStepIndex = 3);
-      await Future.delayed(const Duration(milliseconds: 250));
 
       // Step 5: Candidate Matching
       if (!mounted) return;
       setState(() => _currentStepIndex = 4);
-      await Future.delayed(const Duration(milliseconds: 250));
 
       // Step 6: Finalize
       if (!mounted) return;
@@ -100,7 +95,6 @@ class _ProcessingScreenState extends State<ProcessingScreen> {
       }
 
       // Otherwise automatically advance to Result Screen
-      await Future.delayed(const Duration(milliseconds: 600));
       if (!mounted) return;
       _navigateToResultScreen(output);
     } catch (e) {

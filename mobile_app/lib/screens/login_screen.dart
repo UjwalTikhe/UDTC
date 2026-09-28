@@ -6,7 +6,7 @@ import 'dashboard_screen.dart';
 
 /// Screen 2: Ministry of Home Affairs Authentication & Officer Onboarding Portal
 /// Features:
-/// 1. Tab 0: Officer Sign In with Email & Password (plus quick demo chips for SIH judges)
+/// 1. Tab 0: Officer Sign In with email and password
 /// 2. Tab 1: Officer Sign Up with Email and Password only (+ optional Name)
 /// 3. Passwords stored securely in SQLite with individual cryptographic salts and SHA-256 hashes
 /// 4. Official Department Registry and Badge Verification is integrated inside Officer Profile

@@ -106,7 +106,7 @@ class CryptoSignerService {
     required String officerPin,
     required String officerId,
     required String payloadToSign,
-  }) async {
+  }) {
     // 1. Derive 256-bit officer key using PBKDF2 (10,000 iterations)
     final pbkdf2 = KeyDerivator('SHA-256/HMAC/PBKDF2');
     final salt = utf8.encode("MHA-SALT-LEGAL:$officerId");
@@ -127,7 +127,7 @@ class CryptoSignerService {
     required String canonicalRecordPayload,
     required String officerPin,
     required String officerId,
-  }) {
+  }) async {
     final devSig = await signWithDeviceHardware(canonicalRecordPayload);
     final offSig = signWithOfficerPin(
       officerPin: officerPin,

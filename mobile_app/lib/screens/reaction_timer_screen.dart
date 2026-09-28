@@ -34,7 +34,7 @@ class _ReactionTimerScreenState extends State<ReactionTimerScreen> {
   void initState() {
     super.initState();
     _totalDuration = widget.selectedKit.reactionWindowSeconds;
-    // For fast field demo convenience, start at 10 seconds or full duration
+    // The timer always starts from the selected kit's statutory window.
     _remainingSeconds = _totalDuration > 15 ? 15 : _totalDuration;
     _startTimer();
   }

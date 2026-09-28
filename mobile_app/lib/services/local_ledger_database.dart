@@ -763,9 +763,8 @@ class LocalLedgerDatabase {
       )
     ''');
 
-    final count = Sqflite.firstIntValue(
-      await db.rawQuery('SELECT COUNT(*) FROM department_registry'),
-    ) ?? 0;
+    final countRows = await db.rawQuery('SELECT COUNT(*) AS count FROM department_registry');
+    final count = (countRows.first['count'] as num?)?.toInt() ?? 0;
 
     if (count > 0) return;
 
