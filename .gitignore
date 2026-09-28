@@ -1,28 +1,70 @@
-# Python
+# ==========================================
+# Unified Drug Testing & Colorimetry (UDTC)
+# Git Ignore Configuration
+# ==========================================
+
+# Python & Testing Artifacts
 __pycache__/
 *.py[cod]
 *$py.class
 .pytest_cache/
-*.db-journal
+.coverage
+htmlcov/
+*.egg-info/
+dist/
 
-# Flutter / Dart build artifacts
+# Security, Keys & Sensitive Credentials (Never Commit)
+*.pem
+*.key
+*.p12
+*.jks
+*.keystore
+**/keys/
+**/test_keys/
+.env
+.env.*
+
+# Databases & Runtime Storage
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+**/server_vault.db*
+**/sms_gateway.db*
+**/test_sms.db*
+**/test_ledger.db*
+**/test_suite_ledger.db*
+
+# Runtime File Uploads & Export Caches
+**/exports/
+**/test_exports/
+**/uploads/
+attached_assets/
+.agents/
+.replit
+
+# Flutter / Dart Build Artifacts
 **/build/
 .dart_tool/
 .packages
 .pub-cache/
 .pub/
 *.apk
-ncb-field-drug-testing-companion-release/
+*.aab
 **/.gradle/
 **/local.properties
 **/.flutter-plugins*
+**/flutter_export_environment.sh
 
-# IDE files
+# IDE & Editor Configurations
 .vscode/
 .idea/
 *.swp
 *.swo
+*.sublime-project
+*.sublime-workspace
 
-# OS files
+# Operating System Files
 .DS_Store
 Thumbs.db
+desktop.ini
