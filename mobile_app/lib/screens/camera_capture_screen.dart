@@ -221,11 +221,11 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
     }
   }
 
-  void _onCameraFrame(CameraImage image) {
+  Future<void> _onCameraFrame(CameraImage image) async {
     final now = DateTime.now();
     if (now.difference(_lastQualityCheck).inMilliseconds < 220 || _isCapturing) return;
     _lastQualityCheck = now;
-    final metrics = CameraQualityGate.fromCameraImage(image);
+    final metrics = await CameraQualityGate.fromCameraImage(image);
     if (!mounted) return;
     setState(() {
       _liveLaplacianVariance = metrics.laplacianVariance;
@@ -876,20 +876,24 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
                       height: 220,
                       decoration: BoxDecoration(
                         border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.6),
-                          width: 2,
+                          color: _liveQualityPassed
+                              ? Colors.greenAccent
+                              : (_liveFiducialsDetected
+                                  ? Colors.amberAccent
+                                  : Colors.white.withValues(alpha: 0.6)),
+                          width: _liveQualityPassed ? 2.5 : 2,
                         ),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Stack(
                         children: [
-                          // Corner brackets
+                          // Corner brackets with dynamic coloring based on ArUco detection
                           Positioned(
                             top: 8,
                             left: 8,
                             child: Icon(
                               Icons.crop_free,
-                              color: Colors.greenAccent.withValues(alpha: 0.8),
+                              color: _liveFiducialsDetected ? Colors.greenAccent : Colors.white70,
                               size: 24,
                             ),
                           ),
@@ -898,7 +902,7 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
                             right: 8,
                             child: Icon(
                               Icons.crop_free,
-                              color: Colors.greenAccent.withValues(alpha: 0.8),
+                              color: _liveFiducialsDetected ? Colors.greenAccent : Colors.white70,
                               size: 24,
                             ),
                           ),
@@ -907,7 +911,7 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
                             left: 8,
                             child: Icon(
                               Icons.crop_free,
-                              color: Colors.greenAccent.withValues(alpha: 0.8),
+                              color: _liveFiducialsDetected ? Colors.greenAccent : Colors.white70,
                               size: 24,
                             ),
                           ),
@@ -916,19 +920,19 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
                             right: 8,
                             child: Icon(
                               Icons.crop_free,
-                              color: Colors.greenAccent.withValues(alpha: 0.8),
+                              color: _liveFiducialsDetected ? Colors.greenAccent : Colors.white70,
                               size: 24,
                             ),
                           ),
                           // Center target dot
-                          const Center(
+                          Center(
                             child: Icon(
                               Icons.add,
-                              color: Colors.white70,
+                              color: _liveQualityPassed ? Colors.greenAccent : Colors.white70,
                               size: 28,
                             ),
                           ),
-                          // Reticle Instruction Label
+                          // Reticle Instruction Label showing live ArUco & Sharpness gate
                           Positioned(
                             bottom: 12,
                             left: 0,
@@ -940,13 +944,22 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
                                   vertical: 4,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: Colors.black54,
+                                  color: Colors.black87,
                                   borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: _liveQualityPassed
+                                        ? Colors.greenAccent
+                                        : Colors.white24,
+                                  ),
                                 ),
-                                child: const Text(
-                                  "Center chemical reaction spot inside frame",
+                                child: Text(
+                                  _liveQualityPassed
+                                      ? "QUALITY LOCKED: ArUco 4/4 • Sharpness ${_liveLaplacianVariance.toStringAsFixed(0)}/100"
+                                      : (!_liveFiducialsDetected
+                                          ? "Align all 4 ArUco markers on card inside frame"
+                                          : "Hold device steady (Sharpness: ${_liveLaplacianVariance.toStringAsFixed(0)}/100)"),
                                   style: TextStyle(
-                                    color: Colors.white,
+                                    color: _liveQualityPassed ? Colors.greenAccent : Colors.white,
                                     fontSize: 10,
                                     fontWeight: FontWeight.w600,
                                   ),

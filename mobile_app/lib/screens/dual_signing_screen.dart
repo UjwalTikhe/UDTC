@@ -158,6 +158,7 @@ class _DualSigningScreenState extends State<DualSigningScreen> {
       recordHash: _computedRecordHash!,
       deviceSigHex: _deviceSigHex!,
       officerSigHex: _officerSigHex!,
+      localEvidencePath: widget.imageAssetPath.startsWith('/') ? widget.imageAssetPath : null,
       isStage1Synced: 0,
       isStage2Synced: 0,
       isSmsWitnessed: 0,

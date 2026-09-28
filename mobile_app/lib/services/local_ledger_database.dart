@@ -7,7 +7,6 @@ import 'package:crypto/crypto.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../models/record_model.dart';
 import '../models/domain_models.dart';
-import 'crypto_signer_service.dart';
 
 class LedgerIntegrityReport {
   final bool isValid;
@@ -62,7 +61,7 @@ class LocalLedgerDatabase {
     return await openDatabase(
       path,
       password: password,
-      version: 6,
+      version: 7,
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
     );
@@ -103,9 +102,16 @@ class LocalLedgerDatabase {
         seal_serial TEXT DEFAULT '',
         supervisor_id TEXT,
         supervisor_sig_hex TEXT,
+        local_evidence_path TEXT,
         is_stage1_synced INTEGER DEFAULT 0,
         is_stage2_synced INTEGER DEFAULT 0,
-        is_sms_witnessed INTEGER DEFAULT 0
+        is_sms_witnessed INTEGER DEFAULT 0,
+        stage1_attempts INTEGER NOT NULL DEFAULT 0,
+        stage1_next_attempt_utc REAL NOT NULL DEFAULT 0,
+        stage1_last_error TEXT,
+        stage2_attempts INTEGER NOT NULL DEFAULT 0,
+        stage2_next_attempt_utc REAL NOT NULL DEFAULT 0,
+        stage2_last_error TEXT
       )
     ''');
 
@@ -249,10 +255,30 @@ class LocalLedgerDatabase {
         "ALTER TABLE chain_ledger ADD COLUMN seal_serial TEXT DEFAULT ''",
         "ALTER TABLE chain_ledger ADD COLUMN supervisor_id TEXT",
         "ALTER TABLE chain_ledger ADD COLUMN supervisor_sig_hex TEXT",
+        "ALTER TABLE chain_ledger ADD COLUMN local_evidence_path TEXT",
+        "ALTER TABLE chain_ledger ADD COLUMN stage1_attempts INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE chain_ledger ADD COLUMN stage1_next_attempt_utc REAL NOT NULL DEFAULT 0",
+        "ALTER TABLE chain_ledger ADD COLUMN stage1_last_error TEXT",
+        "ALTER TABLE chain_ledger ADD COLUMN stage2_attempts INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE chain_ledger ADD COLUMN stage2_next_attempt_utc REAL NOT NULL DEFAULT 0",
+        "ALTER TABLE chain_ledger ADD COLUMN stage2_last_error TEXT",
       ]) {
         try { await db.execute(statement); } catch (_) {}
       }
       await _createOperationalTables(db);
+    }
+    if (oldVersion < 7) {
+      for (final statement in [
+        "ALTER TABLE chain_ledger ADD COLUMN local_evidence_path TEXT",
+        "ALTER TABLE chain_ledger ADD COLUMN stage1_attempts INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE chain_ledger ADD COLUMN stage1_next_attempt_utc REAL NOT NULL DEFAULT 0",
+        "ALTER TABLE chain_ledger ADD COLUMN stage1_last_error TEXT",
+        "ALTER TABLE chain_ledger ADD COLUMN stage2_attempts INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE chain_ledger ADD COLUMN stage2_next_attempt_utc REAL NOT NULL DEFAULT 0",
+        "ALTER TABLE chain_ledger ADD COLUMN stage2_last_error TEXT",
+      ]) {
+        try { await db.execute(statement); } catch (_) {}
+      }
     }
   }
 
@@ -400,7 +426,11 @@ class LocalLedgerDatabase {
     final db = await instance.database;
     return await db.update(
       'chain_ledger',
-      {'is_stage1_synced': 1},
+      {
+        'is_stage1_synced': 1,
+        'stage1_last_error': null,
+        'stage1_next_attempt_utc': 0,
+      },
       where: 'test_id = ?',
       whereArgs: [testId],
     );
@@ -410,10 +440,70 @@ class LocalLedgerDatabase {
     final db = await instance.database;
     return await db.update(
       'chain_ledger',
-      {'is_stage2_synced': 1},
+      {
+        'is_stage2_synced': 1,
+        'stage2_last_error': null,
+        'stage2_next_attempt_utc': 0,
+      },
       where: 'test_id = ?',
       whereArgs: [testId],
     );
+  }
+
+  Future<void> markSyncFailure({
+    required String testId,
+    required int stage,
+    required String error,
+  }) async {
+    final db = await instance.database;
+    final prefix = stage == 1 ? 'stage1' : 'stage2';
+    final rows = await db.query(
+      'chain_ledger',
+      columns: ['${prefix}_attempts'],
+      where: 'test_id = ?',
+      whereArgs: [testId],
+      limit: 1,
+    );
+    final attempts = rows.isEmpty
+        ? 0
+        : (rows.first['${prefix}_attempts'] as num?)?.toInt() ?? 0;
+    final delaySeconds = min(3600, 30 * (1 << min(attempts, 6)));
+    final nextAttempt = DateTime.now().toUtc().add(Duration(seconds: delaySeconds));
+    await db.update(
+      'chain_ledger',
+      {
+        '${prefix}_attempts': attempts + 1,
+        '${prefix}_next_attempt_utc': nextAttempt.millisecondsSinceEpoch / 1000.0,
+        '${prefix}_last_error': error,
+      },
+      where: 'test_id = ?',
+      whereArgs: [testId],
+    );
+  }
+
+  Future<List<LocalRecordModel>> getDueUnsyncedStage1Records() async {
+    final db = await instance.database;
+    final now = DateTime.now().toUtc().millisecondsSinceEpoch / 1000.0;
+    final rows = await db.query(
+      'chain_ledger',
+      where: 'is_stage1_synced = 0 AND stage1_next_attempt_utc <= ?',
+      whereArgs: [now],
+      orderBy: 'id ASC',
+    );
+    return rows.map(LocalRecordModel.fromMap).toList();
+  }
+
+  Future<List<LocalRecordModel>> getDueUnsyncedStage2Records() async {
+    final db = await instance.database;
+    final now = DateTime.now().toUtc().millisecondsSinceEpoch / 1000.0;
+    final rows = await db.query(
+      'chain_ledger',
+      where: 'is_stage1_synced = 1 AND is_stage2_synced = 0 '
+          'AND local_evidence_path IS NOT NULL AND stage2_next_attempt_utc <= ?',
+      whereArgs: [now],
+      orderBy: 'id ASC',
+    );
+    return rows.map(LocalRecordModel.fromMap).toList();
   }
 
   Future<int> markSmsWitnessed(String testId) async {
@@ -457,6 +547,18 @@ class LocalLedgerDatabase {
       whereArgs: [now],
       orderBy: 'id ASC',
     );
+  }
+
+  Future<bool> hasSmsOutbox(String testId) async {
+    final db = await instance.database;
+    final rows = await db.query(
+      'sms_outbox',
+      columns: ['test_id'],
+      where: 'test_id = ?',
+      whereArgs: [testId],
+      limit: 1,
+    );
+    return rows.isNotEmpty;
   }
 
   Future<void> markSmsOutboxAttempt(String testId, String error) async {

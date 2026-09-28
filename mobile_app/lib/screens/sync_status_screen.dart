@@ -22,6 +22,7 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
   List<LocalRecordModel> _pendingRecords = [];
   bool _isLoading = true;
   bool _isSyncing = false;
+  int _pendingSmsOutboxCount = 0;
   String _meshStatus = "Mesh Node Listening (BLE/Wi-Fi Direct Active)";
 
   @override
@@ -34,9 +35,11 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
     setState(() => _isLoading = true);
     final records = await _db.getAllRecords(latestFirst: true);
     final pending = records.where((r) => r.isStage1Synced == 0).toList();
+    final pendingSms = await _db.pendingSmsCount();
 
     setState(() {
       _pendingRecords = pending;
+      _pendingSmsOutboxCount = pendingSms;
       _isLoading = false;
     });
   }
@@ -57,10 +60,13 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
   }
 
   Future<void> _flushSmsOutbox() async {
-    int sent = 0;
-    for (final r in _pendingRecords.where((r) => r.isSmsWitnessed == 0)) {
-      final ok = await _smsService.dispatchSmsAnchor(r);
-      if (ok) sent++;
+    final sent = await _smsService.flushPendingOutbox();
+    final queuedRecords = _pendingRecords
+        .where((r) => r.isSmsWitnessed == 0)
+        .toList();
+    for (final r in queuedRecords) {
+      final hasOutbox = await _db.hasSmsOutbox(r.testId);
+      if (!hasOutbox) await _smsService.dispatchSmsAnchor(r);
     }
     await _loadSyncQueue();
 
@@ -156,8 +162,8 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text("Pending 2G SMS", style: GovTheme.caption),
-                                  Text(
-                                    "${_pendingRecords.where((r) => r.isSmsWitnessed == 0).length} records",
+                             Text(
+                                   "$_pendingSmsOutboxCount records",
                                     style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
                                   ),
                                 ],

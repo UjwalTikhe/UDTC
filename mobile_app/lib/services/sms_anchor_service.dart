@@ -32,6 +32,22 @@ class SmsAnchorService {
 
   List<SmsDispatchEntry> get outboxHistory => List.unmodifiable(_outbox);
 
+  Future<bool> _sendNative({
+    required String destination,
+    required String payload,
+  }) async {
+    try {
+      final result = await _smsChannel.invokeMethod<bool>('sendSms', {
+        'to': destination,
+        'message': payload,
+      });
+      return result == true;
+    } catch (e) {
+      debugPrint("Native telephony dispatch failed: $e");
+      return false;
+    }
+  }
+
   /// Dispatches 140-char out-of-band witness anchor over the officer's device SIM
   Future<bool> dispatchSmsAnchor(LocalRecordModel record) async {
     final payload = record.toGsmSmsPayload();
@@ -46,11 +62,7 @@ class SmsAnchorService {
     String? ref;
 
     try {
-      final res = await _smsChannel.invokeMethod<bool>('sendSms', {
-        'to': mhaGatewayNumber,
-        'message': payload,
-      });
-      if (res == true) {
+      if (await _sendNative(destination: mhaGatewayNumber, payload: payload)) {
         status = "DISPATCHED_SIM";
         success = true;
         ref = "GSM-${now.millisecondsSinceEpoch}";
@@ -85,6 +97,38 @@ class SmsAnchorService {
     }
 
     return success;
+  }
+
+  /// Retries only records whose durable outbox backoff has elapsed.
+  /// A successful native dispatch removes the outbox row only after the
+  /// ledger witness flag is committed.
+  Future<int> flushPendingOutbox() async {
+    final pending = await LocalLedgerDatabase.instance.getPendingSmsOutbox();
+    var sent = 0;
+    for (final row in pending) {
+      final testId = row['test_id'] as String;
+      final destination = row['destination'] as String;
+      final payload = row['payload'] as String;
+      if (await _sendNative(destination: destination, payload: payload)) {
+        await LocalLedgerDatabase.instance.markSmsWitnessed(testId);
+        await LocalLedgerDatabase.instance.removeSmsOutbox(testId);
+        _outbox.insert(0, SmsDispatchEntry(
+          testId: testId,
+          destinationNumber: destination,
+          gsmPayload: payload,
+          timestamp: DateTime.now(),
+          status: 'DISPATCHED_SIM',
+          transmissionRef: 'GSM-${DateTime.now().millisecondsSinceEpoch}',
+        ));
+        sent++;
+      } else {
+        await LocalLedgerDatabase.instance.markSmsOutboxAttempt(
+          testId,
+          'Native SMS dispatch did not confirm delivery.',
+        );
+      }
+    }
+    return sent;
   }
 
   /// Direct SMS dispatch method

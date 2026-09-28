@@ -44,8 +44,13 @@ class PanchanamaPdfService {
     pw.Page page(pw.Widget body) => pw.Page(
       pageFormat: PdfPageFormat.a4,
       margin: const pw.EdgeInsets.fromLTRB(42, 40, 42, 32),
-      footer: footer,
-      build: (_) => body,
+      build: (context) => pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+        children: [
+          pw.Expanded(child: body),
+          footer(context),
+        ],
+      ),
     );
 
     document.addPage(page(pw.Column(children: [

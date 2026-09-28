@@ -169,6 +169,7 @@ class _RecordConfirmScreenState extends State<RecordConfirmScreen> {
         netWeight: unsignedRecord.netWeight,
         packagingMarkings: unsignedRecord.packagingMarkings,
         sealSerial: unsignedRecord.sealSerial,
+        localEvidencePath: widget.capturedImageFile!.path,
       );
 
       setState(() => _signingStatus = "Appending immutable block to local encrypted ledger...");

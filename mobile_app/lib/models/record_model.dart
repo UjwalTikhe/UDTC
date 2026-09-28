@@ -34,6 +34,7 @@ class LocalRecordModel {
   final String sealSerial;
   final String? supervisorId;
   final String? supervisorSigHex;
+  final String? localEvidencePath;
   final int isStage1Synced; // 0 = pending, 1 = synced
   final int isStage2Synced; // 0 = pending, 1 = synced
   final int isSmsWitnessed; // 0 = pending, 1 = sent over GSM
@@ -70,6 +71,7 @@ class LocalRecordModel {
     this.sealSerial = '',
     this.supervisorId,
     this.supervisorSigHex,
+    this.localEvidencePath,
     this.isStage1Synced = 0,
     this.isStage2Synced = 0,
     this.isSmsWitnessed = 0,
@@ -190,12 +192,12 @@ class LocalRecordModel {
   }
 
   /// Strict 140-char GSM SMS Anchor representation for 2G out-of-band witness
-  /// Format: MHA|<short_id>|<hash_32>|<officer>|<result>|<lat,long>
   String toGsmSmsPayload() {
     final shortId = testId.replaceAll('TEST-', '').replaceAll('NDPS-', '');
     final hashPrefix = recordHash.length > 32 ? recordHash.substring(0, 32) : recordHash;
     final shortOfficer = officerId.replaceAll('OFFICER-', '');
-    final resCode = classification.contains('POS') ? 'POS' : (classification.contains('NEG') ? 'NEG' : 'INC');
+    final upper = classification.toUpperCase();
+    final resCode = upper.contains('POS') ? 'POS' : (upper.contains('NEG') ? 'NEG' : 'INC');
     final gpsStr = (latitude != null && longitude != null)
         ? '${latitude!.toStringAsFixed(3)},${longitude!.toStringAsFixed(3)}'
         : 'NOGPS';
@@ -235,6 +237,7 @@ class LocalRecordModel {
       'seal_serial': sealSerial,
       'supervisor_id': supervisorId,
       'supervisor_sig_hex': supervisorSigHex,
+      'local_evidence_path': localEvidencePath,
       'is_stage1_synced': isStage1Synced,
       'is_stage2_synced': isStage2Synced,
       'is_sms_witnessed': isSmsWitnessed,
@@ -274,6 +277,7 @@ class LocalRecordModel {
       sealSerial: map['seal_serial'] as String? ?? '',
       supervisorId: map['supervisor_id'] as String?,
       supervisorSigHex: map['supervisor_sig_hex'] as String?,
+      localEvidencePath: map['local_evidence_path'] as String?,
       isStage1Synced: map['is_stage1_synced'] ?? 0,
       isStage2Synced: map['is_stage2_synced'] ?? 0,
       isSmsWitnessed: map['is_sms_witnessed'] ?? 0,
@@ -319,6 +323,7 @@ class LocalRecordModel {
       sealSerial: sealSerial,
        supervisorId: supervisorId ?? this.supervisorId,
        supervisorSigHex: supervisorSigHex ?? this.supervisorSigHex,
+      localEvidencePath: localEvidencePath ?? this.localEvidencePath,
       isStage1Synced: isStage1Synced ?? this.isStage1Synced,
       isStage2Synced: isStage2Synced ?? this.isStage2Synced,
       isSmsWitnessed: isSmsWitnessed ?? this.isSmsWitnessed,

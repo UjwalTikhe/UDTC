@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../models/record_model.dart';
@@ -68,9 +69,19 @@ class StagedSyncService {
         await LocalLedgerDatabase.instance.markStage1Synced(record.testId);
         return true;
       }
+      await LocalLedgerDatabase.instance.markSyncFailure(
+        testId: record.testId,
+        stage: 1,
+        error: 'Stage 1 HTTP ${response.statusCode}',
+      );
       return false;
     } catch (e) {
       debugPrint("Stage 1 Sync network error (offline queue retained): $e");
+      await LocalLedgerDatabase.instance.markSyncFailure(
+        testId: record.testId,
+        stage: 1,
+        error: e.toString(),
+      );
       return false;
     }
   }
@@ -97,9 +108,19 @@ class StagedSyncService {
         await LocalLedgerDatabase.instance.markStage2Synced(testId);
         return true;
       }
+      await LocalLedgerDatabase.instance.markSyncFailure(
+        testId: testId,
+        stage: 2,
+        error: 'Stage 2 HTTP ${response.statusCode}',
+      );
       return false;
     } catch (e) {
       debugPrint("Stage 2 Image Upload network error: $e");
+      await LocalLedgerDatabase.instance.markSyncFailure(
+        testId: testId,
+        stage: 2,
+        error: e.toString(),
+      );
       return false;
     }
   }
@@ -107,17 +128,40 @@ class StagedSyncService {
   /// Synchronizes all pending records currently waiting in the offline queue
   Future<Map<String, int>> syncAllPendingRecords() async {
     final db = LocalLedgerDatabase.instance;
-    final pendingStage1 = await db.getUnsyncedStage1Records();
+    final pendingStage1 = await db.getDueUnsyncedStage1Records();
 
-    int stage1Success = 0;
+    int attempted = 0;
+    int synced = 0;
     for (final rec in pendingStage1) {
+      attempted++;
       final ok = await syncStage1Metadata(rec);
-      if (ok) stage1Success++;
+      if (ok) synced++;
+    }
+
+    final pendingStage2 = await db.getDueUnsyncedStage2Records();
+    for (final rec in pendingStage2) {
+      attempted++;
+      final path = rec.localEvidencePath;
+      if (path == null || path.isEmpty || !await File(path).exists()) {
+        await db.markSyncFailure(
+          testId: rec.testId,
+          stage: 2,
+          error: 'Local evidence file is unavailable for upload.',
+        );
+        continue;
+      }
+      final ok = await syncStage2Image(
+        testId: rec.testId,
+        imageBytes: await File(path).readAsBytes(),
+        filename: path.split(Platform.pathSeparator).last,
+        officerId: rec.officerId,
+      );
+      if (ok) synced++;
     }
 
     return {
-      'attempted': pendingStage1.length,
-      'synced': stage1Success,
+      'attempted': attempted,
+      'synced': synced,
     };
   }
 
