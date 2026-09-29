@@ -1,0 +1,1914 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UDTC - Unified Drug Testing Companion | Admin & Supervisor Depository</title>
+  <style>
+    :root {
+      --primary: #0A192F;
+      --primary-light: #172A45;
+      --accent: #2563EB;
+      --accent-gold: #D97706;
+      --success: #059669;
+      --danger: #DC2626;
+      --warning: #D97706;
+      --bg: #F1F5F9;
+      --card-bg: #FFFFFF;
+      --text-main: #0F172A;
+      --text-muted: #64748B;
+      --border: #CBD5E1;
+      --border-light: #E2E8F0;
+      --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+      --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ========================================================
+       TOP GOV BAR & HEADER
+    ======================================================== */
+    .gov-strip {
+      background: #050C1A;
+      color: #94A3B8;
+      font-size: 11px;
+      padding: 4px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .gov-strip span {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .badge-ndps {
+      background: rgba(37, 99, 235, 0.2);
+      color: #93C5FD;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 10.5px;
+      font-weight: 600;
+      border: 1px solid rgba(147, 197, 253, 0.3);
+    }
+
+    header {
+      background: linear-gradient(135deg, #0A192F 0%, #112240 100%);
+      color: white;
+      padding: 14px 28px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: var(--shadow-md);
+      position: sticky;
+      top: 0;
+      z-index: 40;
+    }
+
+    .brand-container {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .brand-logo {
+      width: 48px;
+      height: 48px;
+      object-fit: contain;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.05);
+      padding: 2px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+    .brand-text h1 {
+      font-size: 19px;
+      font-weight: 700;
+      letter-spacing: -0.2px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .brand-text h1 span.tag {
+      font-size: 11px;
+      background: var(--accent-gold);
+      color: #000;
+      font-weight: 800;
+      padding: 2px 7px;
+      border-radius: 4px;
+      text-transform: uppercase;
+    }
+    .brand-text p {
+      font-size: 12px;
+      color: #94A3B8;
+      font-weight: 400;
+    }
+
+    .user-panel {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .role-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 12px;
+    }
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #10B981;
+      box-shadow: 0 0 8px #10B981;
+    }
+    .btn-logout {
+      background: rgba(220, 38, 38, 0.15);
+      color: #FCA5A5;
+      border: 1px solid rgba(220, 38, 38, 0.3);
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-logout:hover {
+      background: var(--danger);
+      color: white;
+    }
+
+    /* ========================================================
+       AUTH LOGIN OVERLAY
+    ======================================================== */
+    #authOverlay {
+      position: fixed;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(10, 25, 47, 0.95) 0%, rgba(5, 12, 26, 0.98) 100%);
+      backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 16px;
+    }
+    .login-box {
+      background: #FFFFFF;
+      width: 100%;
+      max-width: 440px;
+      border-radius: 14px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      overflow: hidden;
+      animation: modalFadeIn 0.3s ease-out;
+    }
+    .login-header {
+      background: #0A192F;
+      color: white;
+      padding: 28px 24px;
+      text-align: center;
+      position: relative;
+    }
+    .login-header img {
+      width: 72px;
+      height: 72px;
+      object-fit: contain;
+      margin-bottom: 12px;
+    }
+    .login-header h2 {
+      font-size: 20px;
+      font-weight: 700;
+    }
+    .login-header p {
+      font-size: 12px;
+      color: #94A3B8;
+      margin-top: 4px;
+    }
+
+    .login-body {
+      padding: 24px;
+    }
+    .role-tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 20px;
+      background: #F1F5F9;
+      padding: 4px;
+      border-radius: 8px;
+    }
+    .role-tab-btn {
+      padding: 8px 12px;
+      border: none;
+      background: transparent;
+      font-size: 13px;
+      font-weight: 600;
+      color: #64748B;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .role-tab-btn.active {
+      background: #FFFFFF;
+      color: #0A192F;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+    .form-group label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: #334155;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .form-group input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .form-group input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    }
+    .btn-login {
+      width: 100%;
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 12px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: background 0.2s;
+    }
+    .btn-login:hover {
+      background: #172A45;
+    }
+
+    .quick-creds {
+      margin-top: 18px;
+      padding: 12px;
+      background: #F8FAFC;
+      border: 1px dashed var(--border);
+      border-radius: 6px;
+      font-size: 11.5px;
+      color: #475569;
+    }
+    .quick-creds p {
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: #0F172A;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .quick-btn-group {
+      display: flex;
+      gap: 8px;
+      margin-top: 6px;
+    }
+    .quick-btn {
+      flex: 1;
+      padding: 5px 8px;
+      background: #FFFFFF;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      color: var(--accent);
+      transition: all 0.15s;
+    }
+    .quick-btn:hover {
+      background: #EFF6FF;
+      border-color: var(--accent);
+    }
+
+    /* ========================================================
+       MAIN APP CONTAINER & TABS
+    ======================================================== */
+    main {
+      flex: 1;
+      max-width: 1380px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    /* Admin Banner Bar */
+    .admin-stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .stat-card {
+      background: #FFFFFF;
+      padding: 18px 20px;
+      border-radius: 10px;
+      border: 1px solid var(--border-light);
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .stat-info h3 {
+      font-size: 11.5px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+    .stat-info .stat-value {
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--text-main);
+      margin-top: 4px;
+    }
+    .stat-badge {
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .badge-green { background: #ECFDF5; color: #047857; }
+    .badge-blue { background: #EFF6FF; color: #1D4ED8; }
+    .badge-amber { background: #FFFBEB; color: #B45309; }
+    .badge-purple { background: #FAF5FF; color: #6B21A8; }
+
+    /* Admin Action Toolbar */
+    .admin-toolbar {
+      background: #FFFFFF;
+      padding: 14px 20px;
+      border-radius: 10px;
+      border: 1px solid var(--border-light);
+      box-shadow: var(--shadow-sm);
+      margin-bottom: 20px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+    .toolbar-title {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: #0F172A;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .toolbar-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .btn-action {
+      background: #FFFFFF;
+      border: 1px solid var(--border);
+      color: #1E293B;
+      padding: 7px 14px;
+      border-radius: 6px;
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+    .btn-action:hover {
+      background: #F8FAFC;
+      border-color: #94A3B8;
+    }
+    .btn-action.primary {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+    }
+    .btn-action.primary:hover {
+      background: #1D4ED8;
+    }
+
+    /* Search & Filter Header */
+    .table-controls {
+      background: #FFFFFF;
+      padding: 16px 20px;
+      border-radius: 10px;
+      border: 1px solid var(--border-light);
+      box-shadow: var(--shadow-sm);
+      margin-bottom: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .search-row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+    .search-input-wrapper {
+      position: relative;
+      flex: 1;
+    }
+    .search-input-wrapper input {
+      width: 100%;
+      padding: 10px 14px 10px 38px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 13.5px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .search-input-wrapper input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    }
+    .search-icon {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #94A3B8;
+      font-size: 15px;
+    }
+    .filter-chips {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 2px;
+    }
+    .chip {
+      padding: 5px 12px;
+      border-radius: 16px;
+      font-size: 12px;
+      font-weight: 500;
+      background: #F1F5F9;
+      color: #475569;
+      border: 1px solid transparent;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s;
+    }
+    .chip.active, .chip:hover {
+      background: #EFF6FF;
+      color: var(--accent);
+      border-color: #BFDBFE;
+      font-weight: 600;
+    }
+
+    /* ========================================================
+       SIMPLE LOGS TABLE (PRIMARY VIEW)
+    ======================================================== */
+    .table-container {
+      background: #FFFFFF;
+      border-radius: 10px;
+      border: 1px solid var(--border-light);
+      box-shadow: var(--shadow-sm);
+      overflow: hidden;
+    }
+    .table-header-title {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border-light);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .table-header-title h2 {
+      font-size: 15px;
+      font-weight: 700;
+      color: #0F172A;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .table-header-title span.count-pill {
+      font-size: 11.5px;
+      background: #F1F5F9;
+      color: #475569;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-weight: 600;
+    }
+
+    table.logs-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+    table.logs-table th {
+      background: #F8FAFC;
+      color: #475569;
+      font-size: 11.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 12px 18px;
+      border-bottom: 1px solid var(--border-light);
+    }
+    table.logs-table td {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border-light);
+      font-size: 13px;
+      color: #1E293B;
+      vertical-align: middle;
+    }
+    table.logs-table tr:last-child td {
+      border-bottom: none;
+    }
+    table.logs-table tr:hover td {
+      background-color: #F8FAFC;
+    }
+
+    .officer-cell {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .officer-avatar {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: #E2E8F0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 12px;
+      color: #1E293B;
+      flex-shrink: 0;
+    }
+    .officer-info .name {
+      font-weight: 600;
+      color: #0F172A;
+    }
+    .officer-info .badge {
+      font-size: 11px;
+      color: #64748B;
+    }
+
+    .location-cell {
+      display: flex;
+      flex-direction: column;
+    }
+    .location-cell .city {
+      font-weight: 600;
+      color: #0F172A;
+    }
+    .location-cell .precinct {
+      font-size: 11.5px;
+      color: #64748B;
+    }
+
+    .timing-cell {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 12px;
+      color: #334155;
+    }
+
+    .pill {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .pill-red { background: #FEF2F2; color: #DC2626; border: 1px solid #FECACA; }
+    .pill-green { background: #ECFDF5; color: #059669; border: 1px solid #A7F3D0; }
+    .pill-blue { background: #EFF6FF; color: #2563EB; border: 1px solid #BFDBFE; }
+
+    /* Show Details / In Brief Action Button */
+    .btn-show-details {
+      background: #EFF6FF;
+      color: var(--accent);
+      border: 1px solid #BFDBFE;
+      padding: 7px 14px;
+      border-radius: 6px;
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+    .btn-show-details:hover {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+      box-shadow: var(--shadow-sm);
+    }
+    .btn-show-details svg {
+      transition: transform 0.2s;
+    }
+    .btn-show-details:hover svg {
+      transform: translateY(2px);
+    }
+
+    /* ========================================================
+       FALL TRANSITION BIG DETAILS CARD (MODAL)
+    ======================================================== */
+    .card-modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(4px);
+      z-index: 80;
+      display: none;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 30px 16px;
+      overflow-y: auto;
+    }
+    .card-modal-backdrop.active {
+      display: flex;
+    }
+
+    /* Fall Transition Animation */
+    @keyframes cardFallDown {
+      0% {
+        opacity: 0;
+        transform: translateY(-80px) scale(0.96);
+      }
+      60% {
+        opacity: 1;
+        transform: translateY(10px) scale(1.01);
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .big-detail-card {
+      background: #FFFFFF;
+      width: 100%;
+      max-width: 980px;
+      border-radius: 16px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+      overflow: hidden;
+      animation: cardFallDown 0.38s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      margin: auto;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    /* Card Header with X on Top Right */
+    .big-card-header {
+      background: linear-gradient(135deg, #0A192F 0%, #172A45 100%);
+      color: white;
+      padding: 22px 28px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: relative;
+      border-bottom: 2px solid var(--accent-gold);
+    }
+    .big-card-header-info {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .assay-indicator {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      background: #3A1054;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 800;
+      font-size: 15px;
+      box-shadow: 0 0 14px rgba(58, 16, 84, 0.8);
+      border: 2px solid #C084FC;
+    }
+    .big-card-header-titles h2 {
+      font-size: 19px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .big-card-header-titles p {
+      font-size: 12.5px;
+      color: #94A3B8;
+      margin-top: 3px;
+    }
+
+    /* The X close button on top right */
+    .btn-close-card {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-close-card:hover {
+      background: var(--danger);
+      border-color: var(--danger);
+      transform: scale(1.08) rotate(90deg);
+    }
+
+    /* Big Card Body Grid */
+    .big-card-body {
+      padding: 28px;
+      background: #FFFFFF;
+      max-height: calc(85vh - 120px);
+      overflow-y: auto;
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+    }
+
+    .detail-panel {
+      background: #F8FAFC;
+      border: 1px solid var(--border-light);
+      border-radius: 10px;
+      padding: 18px 20px;
+    }
+    .detail-panel.full-width {
+      grid-column: span 2;
+    }
+
+    .panel-heading {
+      font-size: 12.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #0F172A;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #E2E8F0;
+    }
+
+    .info-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .info-row {
+      display: flex;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .info-label {
+      width: 150px;
+      flex-shrink: 0;
+      color: #64748B;
+      font-weight: 600;
+    }
+    .info-value {
+      flex: 1;
+      color: #0F172A;
+      font-weight: 500;
+    }
+    .highlight-pill {
+      background: #EFF6FF;
+      color: #1D4ED8;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 4px;
+      border: 1px solid #BFDBFE;
+    }
+    .danger-pill {
+      background: #FEF2F2;
+      color: #DC2626;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 4px;
+      border: 1px solid #FECACA;
+    }
+
+    /* Witness Card */
+    .witness-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 4px;
+    }
+    .witness-card {
+      background: #FFFFFF;
+      border: 1px solid #CBD5E1;
+      border-radius: 8px;
+      padding: 12px 14px;
+      font-size: 12.5px;
+    }
+    .witness-name {
+      font-weight: 700;
+      color: #0F172A;
+      margin-bottom: 4px;
+    }
+    .witness-detail {
+      color: #475569;
+      line-height: 1.4;
+    }
+
+    /* Crypto Attestation Bar */
+    .crypto-box {
+      background: #0A192F;
+      color: #E2E8F0;
+      border-radius: 8px;
+      padding: 16px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 11.5px;
+      margin-top: 10px;
+      border: 1px solid #1E293B;
+    }
+    .crypto-line {
+      display: flex;
+      justify-content: space-between;
+      padding: 4px 0;
+      border-bottom: 1px dashed rgba(255, 255, 255, 0.1);
+    }
+    .crypto-line:last-child {
+      border-bottom: none;
+    }
+    .crypto-label {
+      color: #94A3B8;
+    }
+    .crypto-val {
+      color: #38BDF8;
+      font-weight: 600;
+    }
+
+    /* Big Card Footer */
+    .big-card-footer {
+      padding: 16px 28px;
+      background: #F1F5F9;
+      border-top: 1px solid #E2E8F0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .btn-cert-download {
+      background: var(--accent);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: background 0.2s;
+    }
+    .btn-cert-download:hover {
+      background: #1D4ED8;
+    }
+    .btn-back-simple {
+      background: #FFFFFF;
+      color: #334155;
+      border: 1px solid #CBD5E1;
+      padding: 9px 18px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-back-simple:hover {
+      background: #E2E8F0;
+    }
+
+    /* ========================================================
+       SECTION 63 BSA CERTIFICATE MODAL
+    ======================================================== */
+    #certModal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.85);
+      z-index: 120;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    #certModal.active {
+      display: flex;
+    }
+    .cert-paper {
+      background: white;
+      width: 100%;
+      max-width: 780px;
+      border-radius: 8px;
+      padding: 40px;
+      box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+      font-family: "Times New Roman", Times, serif;
+      position: relative;
+      max-height: 90vh;
+      overflow-y: auto;
+      color: #111;
+    }
+    .cert-paper h2 {
+      text-align: center;
+      font-size: 19px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+    .cert-paper h3 {
+      text-align: center;
+      font-size: 13.5px;
+      color: #444;
+      font-weight: normal;
+      margin-bottom: 16px;
+    }
+    .cert-body {
+      font-size: 13.5px;
+      line-height: 1.6;
+      text-align: justify;
+      margin-top: 14px;
+    }
+    .cert-seal {
+      margin-top: 30px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+    .cert-seal-box {
+      border: 2px dashed #0A192F;
+      padding: 10px;
+      font-size: 11px;
+      font-family: monospace;
+      max-width: 320px;
+    }
+
+    /* Print styles */
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+      #certModal, #certModal * {
+        visibility: visible;
+      }
+      #certModal {
+        position: absolute;
+        left: 0;
+        top: 0;
+        background: white;
+        padding: 0;
+      }
+      .cert-paper {
+        box-shadow: none;
+        max-width: 100%;
+        padding: 20mm;
+      }
+      .no-print {
+        display: none !important;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .detail-grid {
+        grid-template-columns: 1fr;
+      }
+      .detail-panel.full-width {
+        grid-column: span 1;
+      }
+      .witness-container {
+        grid-template-columns: 1fr;
+      }
+      .search-row {
+        flex-direction: column;
+      }
+      .user-panel {
+        gap: 8px;
+      }
+      .role-badge span.text {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Statutory Banner -->
+  <div class="gov-strip">
+    <span>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      GOVERNMENT OF INDIA &bull; NARCOTICS CONTROL BUREAU &bull; CRIME INVESTIGATION VAULT
+    </span>
+    <span class="badge-ndps">
+      STATUTORY COMPLIANCE: NDPS ACT §52A &bull; BHARATIYA SAKSHYA ADHINIYAM §63
+    </span>
+  </div>
+
+  <!-- Main Navigation Header -->
+  <header>
+    <div class="brand-container">
+      <img src="app_logo.png" alt="UDTC Symbol" class="brand-logo" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'48\' height=\'48\' viewBox=\'0 0 24 24\' fill=\'%23D97706\'><path d=\'M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5\'/></svg>'">
+      <div class="brand-text">
+        <h1>UDTC <span class="tag">Portal</span></h1>
+        <p>Unified Drug Testing Companion &bull; Central Evidence Depository</p>
+      </div>
+    </div>
+
+    <div class="user-panel">
+      <div class="role-badge">
+        <div class="status-dot"></div>
+        <span class="text" id="currentUserDisplay">Logged in: <strong>Supervisor</strong></span>
+      </div>
+      <button class="btn-action" id="btnToggleRole" onclick="switchRole()" title="Switch between Supervisor and Admin mode">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7.5" r="4"></circle><polyline points="17 11 19 13 23 9"></polyline></svg>
+        <span id="roleSwitchLabel">Switch to Admin</span>
+      </button>
+      <button class="btn-logout" onclick="openLoginOverlay()">Logout</button>
+    </div>
+  </header>
+
+  <!-- Main Content Body -->
+  <main>
+
+    <!-- Admin-Only Metrics & Hardware Integrity Bar -->
+    <div id="adminPanel" style="display: none;">
+      <div class="admin-stats-grid">
+        <div class="stat-card">
+          <div class="stat-info">
+            <h3>Total Seizures Logged</h3>
+            <div class="stat-value">24</div>
+          </div>
+          <span class="stat-badge badge-blue">Active Hub</span>
+        </div>
+        <div class="stat-card">
+          <div class="stat-info">
+            <h3>Commercial Quantities</h3>
+            <div class="stat-value">9 Cases</div>
+          </div>
+          <span class="stat-badge badge-amber">&gt;250g Threshold</span>
+        </div>
+        <div class="stat-card">
+          <div class="stat-info">
+            <h3>Ledger Cryptographic Health</h3>
+            <div class="stat-value">100% Valid</div>
+          </div>
+          <span class="stat-badge badge-green">SHA-256 Chained</span>
+        </div>
+        <div class="stat-card">
+          <div class="stat-info">
+            <h3>Registered Field Devices</h3>
+            <div class="stat-value">14 Handsets</div>
+          </div>
+          <span class="stat-badge badge-purple">TEE Keystore</span>
+        </div>
+      </div>
+
+      <div class="admin-toolbar">
+        <div class="toolbar-title">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+          Admin Command &amp; Evidentiary Audit Controls
+        </div>
+        <div class="toolbar-actions">
+          <button class="btn-action primary" onclick="runLedgerAudit()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            Verify Blockchain Hash-Chain
+          </button>
+          <button class="btn-action" onclick="showSmsMonitor()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+            2G SMS Gateway Monitor (140-char)
+          </button>
+          <button class="btn-action" onclick="exportAuditLog()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            Export JSON Audit Trail
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Search and Filter Bar -->
+    <div class="table-controls">
+      <div class="search-row">
+        <div class="search-input-wrapper">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="searchInput" placeholder="Search by Officer Name, City, FIR Number, Drug Type, or Witness details..." oninput="handleSearch()">
+        </div>
+        <button class="btn-action" onclick="resetFilters()">Clear Filters</button>
+      </div>
+      <div class="filter-chips">
+        <button class="chip active" onclick="filterByChip('ALL', this)">All Evidence Logs (24)</button>
+        <button class="chip" onclick="filterByChip('COMMERCIAL', this)">Commercial Quantities (&gt;250g)</button>
+        <button class="chip" onclick="filterByChip('HEROIN', this)">Heroin / Opiates (Marquis)</button>
+        <button class="chip" onclick="filterByChip('COCAINE', this)">Cocaine (Scott Reagent)</button>
+        <button class="chip" onclick="filterByChip('CANNABIS', this)">Cannabinoids (D-L)</button>
+        <button class="chip" onclick="filterByChip('NASHIK', this)">Nashik Zonal Hub</button>
+      </div>
+    </div>
+
+    <!-- Simple Logs Table -->
+    <div class="table-container">
+      <div class="table-header-title">
+        <h2>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+          Field Drug Seizure Logs
+        </h2>
+        <span class="count-pill" id="recordCountPill">Showing 4 Records</span>
+      </div>
+
+      <table class="logs-table">
+        <thead>
+          <tr>
+            <th>Status / Assay</th>
+            <th>Name of Officer</th>
+            <th>Location - City</th>
+            <th>Timing (IST)</th>
+            <th>Crime / FIR No.</th>
+            <th style="text-align: right;">Action</th>
+          </tr>
+        </thead>
+        <tbody id="logsTableBody">
+          <!-- Dynamically populated via JS; First row is the user's specific sample data -->
+        </tbody>
+      </table>
+    </div>
+
+  </main>
+
+  <!-- ========================================================
+       FALL TRANSITION BIG DETAILS CARD (MODAL)
+  ======================================================== -->
+  <div class="card-modal-backdrop" id="detailModalBackdrop" onclick="handleBackdropClick(event)">
+    <div class="big-detail-card" id="bigDetailCard">
+      
+      <!-- Big Card Header with Close X Button on Top Right -->
+      <div class="big-card-header">
+        <div class="big-card-header-info">
+          <div class="assay-indicator" title="Marquis Reagent Deep Imperial Violet Reaction">
+            NDDK
+          </div>
+          <div class="big-card-header-titles">
+            <h2>
+              <span id="cardDrugTitle">Heroin HCl (Diacetylmorphine)</span>
+              <span class="pill pill-red" id="cardQuantityBadge">COMMERCIAL QUANTITY (&gt;250g)</span>
+            </h2>
+            <p id="cardSubtitle">Presumptive POSITIVE &bull; CIEDE2000 &Delta;E*₀₀: 3.12 (Conf: 96.8%) &bull; NDPS §52A Sealed</p>
+          </div>
+        </div>
+
+        <!-- The Top Right X Button to return to simple logs -->
+        <button class="btn-close-card" onclick="closeDetailCard()" title="Close Details & Return to Simple Logs">
+          ✕
+        </button>
+      </div>
+
+      <!-- Big Card Body with Full Product Details -->
+      <div class="big-card-body">
+        <div class="detail-grid">
+          
+          <!-- Panel 1: Crime & Seizure Particulars -->
+          <div class="detail-panel">
+            <div class="panel-heading">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              Crime &amp; Statutory Particulars
+            </div>
+            <div class="info-list">
+              <div class="info-row">
+                <span class="info-label">Crime / FIR No:</span>
+                <span class="info-value highlight-pill" id="d_crime_no">NCB/DZU/CR-14/2026</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Police Station:</span>
+                <span class="info-value" id="d_police_stn">FIR No. 0184/2026, PS Crime Branch, Nashik Rural</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">NDPS Sections:</span>
+                <span class="info-value danger-pill" id="d_sections">Sections 8(c), 21(c), 29 of the NDPS Act, 1985</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Investigating Officer:</span>
+                <span class="info-value" id="d_officer">Inspector Vikramaditya Deshmukh (MHA-NCB-DEL-042)</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Seizure Timestamp:</span>
+                <span class="info-value" id="d_timing">29-Sep-2026, 09:42:15 IST (UTC: 04:12:15Z)</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Panel 2: Seizure Weights & Sampling Protocol -->
+          <div class="detail-panel">
+            <div class="panel-heading">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
+              Seizure Size &amp; Sampling Weights
+            </div>
+            <div class="info-list">
+              <div class="info-row">
+                <span class="info-label">Gross Weight:</span>
+                <span class="info-value" id="d_gross_wt"><strong>542.80 grams</strong> (including multi-layer polythene packaging)</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Net Contraband:</span>
+                <span class="info-value danger-pill" id="d_net_wt">510.00 grams (Commercial Quantity > 250g)</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Sampling Protocol:</span>
+                <span class="info-value" id="d_sampling">2 sample packets drawn (Mark A-1 and Mark A-2, 5.0g each)</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Seal Serial No:</span>
+                <span class="info-value" id="d_seal">NCB-MUM-SEAL-88912A &bull; Lead Embossed</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Panel 3: Exact Location & Geolocation -->
+          <div class="detail-panel full-width">
+            <div class="panel-heading">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+              Exact Location &amp; GNSS Satellite Fix
+            </div>
+            <div class="info-list">
+              <div class="info-row">
+                <span class="info-label">Exact Address:</span>
+                <span class="info-value" id="d_address">Near Highway Toll Plaza, KM Stone 182, Mumbai-Agra National Highway (NH-60), Vilholi Shivar, Nashik, Maharashtra – 422010</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">GPS Coordinates:</span>
+                <span class="info-value highlight-pill" id="d_gps">19.93241° N, 73.74820° E (Accuracy: ±2.4 m) &bull; Fix: 9 Satellites Locked</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Precinct Jurisdiction:</span>
+                <span class="info-value" id="d_precinct">Ambad Police Station / NCB Mumbai Zonal Unit</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Panel 4: Contraband Visual & Physical Description -->
+          <div class="detail-panel full-width">
+            <div class="panel-heading">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12h20M2 12l5-5m-5 5l5 5"></path></svg>
+              Contraband Visual &amp; Physical Description
+            </div>
+            <div class="info-list">
+              <div class="info-row">
+                <span class="info-label">Appearance:</span>
+                <span class="info-value" id="d_appearance">Granular, semi-coarse powder ranging from light beige to dull earthy brown.</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Packaging &amp; Concealment:</span>
+                <span class="info-value" id="d_packaging">Hermetically packed in a transparent heat-sealed polythene pouch wrapped in brown adhesive parcel tape, concealed inside the inner zip lining of a black nylon backpack.</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Physical Properties:</span>
+                <span class="info-value" id="d_properties">Slightly damp, characteristic vinegar-like (acetic acid) pungent odour; turns deep violet/purple upon Marquis reagent assay.</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Panel 5: Independent Panch Witnesses -->
+          <div class="detail-panel full-width">
+            <div class="panel-heading">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+              Independent Panch Witnesses (NDPS Act §52A Attestation)
+            </div>
+            <div class="witness-container">
+              <div class="witness-card">
+                <div class="witness-name">Panch Witness No. 1: Rameshwar Dattatray Shinde (Age: 42 yrs)</div>
+                <div class="witness-detail"><strong>Occupation:</strong> Certified Weighbridge Operator / Local Merchant</div>
+                <div class="witness-detail"><strong>ID Proof:</strong> Aadhaar No. XXXX-XXXX-7812</div>
+                <div class="witness-detail"><strong>Address:</strong> Flat No. 12, Sai Shraddha Heights, Trimurti Chowk, CIDCO, Nashik – 422009</div>
+                <div class="witness-detail"><strong>Contact:</strong> +91 98231 44510 &bull; <em>Physical Panchnama Signed</em></div>
+              </div>
+              <div class="witness-card">
+                <div class="witness-name">Panch Witness No. 2: Anand Vinayak Kulkarni (Age: 36 yrs)</div>
+                <div class="witness-detail"><strong>Occupation:</strong> General Store Proprietor, Vilholi Phata</div>
+                <div class="witness-detail"><strong>ID Proof:</strong> Voter ID No. MT/20/124/098142</div>
+                <div class="witness-detail"><strong>Address:</strong> House No. 45, Old Agra Road, Vilholi Village, Dist. Nashik – 422010</div>
+                <div class="witness-detail"><strong>Contact:</strong> +91 94222 89013 &bull; <em>Physical Panchnama Signed</em></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Panel 6: Cryptographic Attestation & Evidence Proof -->
+          <div class="detail-panel full-width">
+            <div class="panel-heading">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+              Cryptographic Chain of Custody &amp; Hardware Signatures
+            </div>
+            <div class="crypto-box">
+              <div class="crypto-line">
+                <span class="crypto-label">Android Keystore Hardware Key (P-256):</span>
+                <span class="crypto-val">3045022100a4f89d98e1...d402206bc891f7 (TEE SECURED)</span>
+              </div>
+              <div class="crypto-line">
+                <span class="crypto-label">Raw Frame Image SHA-256 Checksum:</span>
+                <span class="crypto-val">e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855</span>
+              </div>
+              <div class="crypto-line">
+                <span class="crypto-label">Immutable Hash Ledger Block:</span>
+                <span class="crypto-val">Block #1042 (Parent: 7ca94f2b... &bull; Verified Linked)</span>
+              </div>
+              <div class="crypto-line">
+                <span class="crypto-label">Out-of-Band 2G GSM-7 SMS Witness:</span>
+                <span class="crypto-val">MHA|2026-DEL-0099|e3b0c44298fc|POS|28.614,77.209 (ACKNOWLEDGED)</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Big Card Footer -->
+      <div class="big-card-footer">
+        <button class="btn-cert-download" onclick="openCertModal()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+          Generate Court Certificate (Section 63 BSA)
+        </button>
+        <button class="btn-back-simple" onclick="closeDetailCard()">
+          ← Return to Simple Logs
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ========================================================
+       SECTION 63 BSA ELECTRONIC COURT CERTIFICATE MODAL
+  ======================================================== -->
+  <div id="certModal" onclick="if(event.target===this) closeCertModal()">
+    <div class="cert-paper">
+      <div style="text-align: right; margin-bottom: 8px;" class="no-print">
+        <button onclick="window.print()" class="btn-action primary">🖨️ Print Certificate</button>
+        <button onclick="closeCertModal()" class="btn-action" style="margin-left: 8px;">✕ Close</button>
+      </div>
+      <h2>CERTIFICATE UNDER SECTION 63 OF THE BHARATIYA SAKSHYA ADHINIYAM (BSA), 2023</h2>
+      <h3>[Equivalent to Section 65B of the Indian Evidence Act, 1872]</h3>
+      <hr style="border: 0.5px solid #111; margin: 12px 0;">
+
+      <div class="cert-body">
+        <p>I, <strong>Inspector Vikramaditya Deshmukh</strong>, Badge No. <strong>MHA-NCB-DEL-042</strong>, being an officer authorized and having lawful custody and operational control over the computer device utilized for capturing forensic colorimetric evidence, hereby state and certify as follows:</p>
+        <br>
+        <ol style="margin-left: 20px;">
+          <li>That the electronic record containing the photographic image and colorimetric assay metrics relating to <strong>Crime / FIR No. NCB/DZU/CR-14/2026</strong> was produced by an Android Mobile Device (Hardware Device ID: <code>TEE-SEC-P256-4091</code>) during the period over which the computer was used regularly to store or process information.</li>
+          <li>That throughout the material part of the said period, the computer was operating properly and the mathematical integrity of the records was maintained without any unauthorized interference or modification.</li>
+          <li>That the unwatermarked raw photographic frame yielded the cryptographic <strong>SHA-256 Checksum: <code>e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855</code></strong>, and was digitally signed with a non-exportable hardware-backed <strong>ECDSA P-256 key</strong> inside the Trusted Execution Environment (TEE).</li>
+          <li>That the seizure took place at GPS Coordinates: <strong>19.93241° N, 73.74820° E</strong> (Near Highway Toll Plaza, KM Stone 182, NH-60, Nashik) on <strong>29-Sep-2026, 09:42:15 IST</strong>.</li>
+        </ol>
+        <br>
+        <p>I hereby certify that all particulars stated above are true to the best of my official knowledge and belief.</p>
+
+        <div class="cert-seal">
+          <div class="cert-seal-box">
+            UDTC HARDWARE ATTESTED<br>
+            ECDSA P-256: 3045022100a4...<br>
+            BLOCK HASH: 09d4bf912...<br>
+            STATUS: 100% UNTAMPERED
+          </div>
+          <div style="text-align: right;">
+            <p>____________________________________</p>
+            <p><strong>(Inspector Vikramaditya Deshmukh)</strong></p>
+            <p>Investigating Officer / Custodian of Device</p>
+            <p>Narcotics Control Bureau (NCB), Mumbai Zonal Unit</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================
+       LOGIN OVERLAY
+  ======================================================== */ -->
+  <div id="authOverlay" style="display: none;">
+    <div class="login-box">
+      <div class="login-header">
+        <img src="app_logo.png" alt="Logo" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'64\' height=\'64\' viewBox=\'0 0 24 24\' fill=\'%23D97706\'><path d=\'M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5\'/></svg>'">
+        <h2>UDTC Depository Login</h2>
+        <p>Unified Drug Testing Companion &bull; Law Enforcement Gateway</p>
+      </div>
+      <div class="login-body">
+        <div class="role-tabs">
+          <button class="role-tab-btn active" id="tabSupervisor" onclick="selectLoginRole('supervisor')">🛡️ Supervisor</button>
+          <button class="role-tab-btn" id="tabAdmin" onclick="selectLoginRole('admin')">⚙️ Administrator</button>
+        </div>
+
+        <form onsubmit="handleLoginSubmit(event)">
+          <div class="form-group">
+            <label>Officer / Admin ID</label>
+            <input type="text" id="loginUsername" value="supervisor" required>
+          </div>
+          <div class="form-group">
+            <label>Security Password / PIN</label>
+            <input type="password" id="loginPassword" value="udtc@2026" required>
+          </div>
+          <button type="submit" class="btn-login" id="btnLoginSubmit">
+            Authorize &amp; Access Depository
+          </button>
+        </form>
+
+        <div class="quick-creds">
+          <p>
+            <span>One-Click Video Demo Access:</span>
+            <span style="font-size: 10px; color: var(--accent);">Tap to autofill</span>
+          </p>
+          <div class="quick-btn-group">
+            <button type="button" class="quick-btn" onclick="fillCreds('supervisor')">Fill Supervisor</button>
+            <button type="button" class="quick-btn" onclick="fillCreds('admin')">Fill Admin</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- JavaScript Application Logic -->
+  <script>
+    // Master Dataset of Seizures
+    const SEIZURE_DATA = [
+      {
+        id: "NCB-2026-001",
+        officer: "Inspector Vikramaditya Deshmukh",
+        badge: "MHA-NCB-DEL-042",
+        city: "Nashik, Maharashtra",
+        precinct: "Ambad Police Station / NCB Mumbai Zonal Unit",
+        timing: "29-Sep-2026, 09:42:15 IST",
+        crimeNo: "NCB/DZU/CR-14/2026",
+        policeStn: "FIR No. 0184/2026, PS Crime Branch, Nashik Rural",
+        sections: "Sections 8(c), 21(c), 29 of the NDPS Act, 1985",
+        substance: "Heroin HCl (Diacetylmorphine)",
+        assayKit: "NDDK (Marquis Reagent)",
+        assayResult: "POSITIVE",
+        colorSwatch: "#3A1054",
+        deltaE: 3.12,
+        confidence: "96.8%",
+        isCommercial: true,
+        grossWt: "542.80 grams (including multi-layer polythene packaging)",
+        netWt: "510.00 grams (Commercial Quantity > 250g)",
+        sampling: "2 sample packets drawn (Mark A-1 and Mark A-2, 5.0g each)",
+        seal: "NCB-MUM-SEAL-88912A (Lead Embossed)",
+        address: "Near Highway Toll Plaza, KM Stone 182, Mumbai-Agra National Highway (NH-60), Vilholi Shivar, Nashik, Maharashtra – 422010",
+        gps: "19.93241° N, 73.74820° E (Accuracy: ±2.4 m)",
+        appearance: "Granular, semi-coarse powder ranging from light beige to dull earthy brown.",
+        packaging: "Hermetically packed in a transparent heat-sealed polythene pouch wrapped in brown adhesive parcel tape, concealed inside the inner zip lining of a black nylon backpack.",
+        properties: "Slightly damp, characteristic vinegar-like (acetic acid) pungent odour; turns deep violet/purple upon Marquis reagent assay.",
+        panch1: {
+          name: "Rameshwar Dattatray Shinde (Age: 42 yrs)",
+          occ: "Certified Weighbridge Operator / Local Merchant",
+          id: "Aadhaar No. XXXX-XXXX-7812",
+          addr: "Flat No. 12, Sai Shraddha Heights, Trimurti Chowk, CIDCO, Nashik – 422009",
+          phone: "+91 98231 44510"
+        },
+        panch2: {
+          name: "Anand Vinayak Kulkarni (Age: 36 yrs)",
+          occ: "General Store Proprietor, Vilholi Phata",
+          id: "Voter ID No. MT/20/124/098142",
+          addr: "House No. 45, Old Agra Road, Vilholi Village, Dist. Nashik – 422010",
+          phone: "+91 94222 89013"
+        },
+        rawHash: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        p256Sig: "3045022100a4f89d98e1...d402206bc891f7",
+        blockNo: "#1042"
+      },
+      {
+        id: "NCB-2026-002",
+        officer: "Sub-Inspector Priya Sharma",
+        badge: "MH-ANTF-PUN-019",
+        city: "Pune, Maharashtra",
+        precinct: "Hinjawadi PS / ANTF Pune",
+        timing: "28-Sep-2026, 21:15:40 IST",
+        crimeNo: "ANTF/PUN/CR-88/2026",
+        policeStn: "FIR No. 0412/2026, PS Hinjawadi",
+        sections: "Sections 8(c), 21(b) of NDPS Act, 1985",
+        substance: "Cocaine Hydrochloride",
+        assayKit: "KDK (Scott Reagent)",
+        assayResult: "POSITIVE",
+        colorSwatch: "#0047AB",
+        deltaE: 2.84,
+        confidence: "98.1%",
+        isCommercial: false,
+        grossWt: "125.40 grams",
+        netWt: "112.00 grams (Intermediate Quantity)",
+        sampling: "2 sample packets (Mark S-1, S-2, 2.0g each)",
+        seal: "PUN-ANTF-SEAL-4412",
+        address: "Near IT Park Phase 2 Junction, Hinjawadi, Pune, Maharashtra – 411057",
+        gps: "18.59120° N, 73.73890° E (Accuracy: ±3.1 m)",
+        appearance: "Fine crystalline white flakes with slight pearlescent sheen.",
+        packaging: "Ziploc transparent sachets wrapped in silver foil.",
+        properties: "Odorless, bitter taste with topical numbing effect; cobalt blue precipitate on Scott test.",
+        panch1: {
+          name: "Suresh Rao (Age: 38 yrs)",
+          occ: "Security Supervisor",
+          id: "Aadhaar: XXXX-XXXX-1982",
+          addr: "Wakad, Pune",
+          phone: "+91 97654 32109"
+        },
+        panch2: {
+          name: "Deepak Patil (Age: 29 yrs)",
+          occ: "Cab Fleet Operator",
+          id: "PAN: AADPP8812K",
+          addr: "Pimpri, Pune",
+          phone: "+91 98811 22334"
+        },
+        rawHash: "7b89d4218a5f019c4d9283741829eebc5643019823485761a293847561a2b3c4",
+        p256Sig: "304402207f89b2...41a22039f88c7d",
+        blockNo: "#1041"
+      },
+      {
+        id: "NCB-2026-003",
+        officer: "Inspector Rajesh K. Meena",
+        badge: "MHA-NCB-DEL-108",
+        city: "New Delhi, Delhi",
+        precinct: "IGI Airport Cargo Unit / NCB Delhi",
+        timing: "27-Sep-2026, 14:02:10 IST",
+        crimeNo: "NCB/DEL/CR-102/2026",
+        policeStn: "FIR No. 0089/2026, PS IGI Airport",
+        sections: "Sections 8(c), 20(b)(ii)(C), 29 of NDPS Act, 1985",
+        substance: "High-Grade Charas (Cannabis Resin)",
+        assayKit: "PCDK (Duquenois-Levine)",
+        assayResult: "POSITIVE",
+        colorSwatch: "#4B0082",
+        deltaE: 3.45,
+        confidence: "95.2%",
+        isCommercial: true,
+        grossWt: "2,150.00 grams (2.15 kg)",
+        netWt: "2,020.00 grams (Commercial Quantity > 1000g)",
+        sampling: "2 sample packets (Mark C-1, C-2, 24.0g each)",
+        seal: "DEL-NCB-AIR-092",
+        address: "Air Cargo Export Terminal, IGI Airport, New Delhi – 110037",
+        gps: "28.55620° N, 77.09990° E (Accuracy: ±1.8 m)",
+        appearance: "Dark greenish-brown to black compressed cylindrical sticks.",
+        packaging: "Concealed inside hollow wooden handicrafts lined with carbon paper.",
+        properties: "Pungent earthy aroma; chloroform layer turns indigo-violet on D-L test.",
+        panch1: {
+          name: "Mohan Lal (Age: 45 yrs)",
+          occ: "Cargo Customs Clearing Agent",
+          id: "Aadhaar: XXXX-XXXX-5521",
+          addr: "Mahipalpur, New Delhi",
+          phone: "+91 98110 99887"
+        },
+        panch2: {
+          name: "Harish Chandra (Age: 51 yrs)",
+          occ: "Warehouse Logistics Manager",
+          id: "Voter ID: DL/04/022/99812",
+          addr: "Dwarka Sector 7, New Delhi",
+          phone: "+91 99100 23456"
+        },
+        rawHash: "3f98c11928374a5b6c7d8e9f0123456789abcdef0123456789abcdef01234567",
+        p256Sig: "3046022100e871...12022100b99182",
+        blockNo: "#1040"
+      },
+      {
+        id: "NCB-2026-004",
+        officer: "Inspector Vikramaditya Deshmukh",
+        badge: "MHA-NCB-DEL-042",
+        city: "Thane, Maharashtra",
+        precinct: "Kalyan PS / ANTF Thane",
+        timing: "26-Sep-2026, 18:30:00 IST",
+        crimeNo: "ANTF/THA/CR-45/2026",
+        policeStn: "FIR No. 0290/2026, PS Kalyan West",
+        sections: "Sections 8(c), 22(c) of NDPS Act, 1985",
+        substance: "Methamphetamine (Crystal Meth)",
+        assayKit: "NDDK (Marquis Reagent)",
+        assayResult: "POSITIVE",
+        colorSwatch: "#D97706",
+        deltaE: 3.80,
+        confidence: "94.4%",
+        isCommercial: true,
+        grossWt: "320.00 grams",
+        netWt: "300.00 grams (Commercial Quantity > 50g)",
+        sampling: "2 sample packets (Mark M-1, M-2, 5.0g each)",
+        seal: "THA-SEAL-8812",
+        address: "Near Kalyan Railway Goods Shed, Kalyan West, Thane, Maharashtra – 421301",
+        gps: "19.24370° N, 73.13550° E (Accuracy: ±2.9 m)",
+        appearance: "Translucent coarse white crystals resembling rock salt.",
+        packaging: "Heat-sealed tea bag packaging branded 'Guan Yin Wang'.",
+        properties: "Immediate reddish-orange to dark orange-brown reaction on Marquis assay.",
+        panch1: {
+          name: "Ganesh Kadam (Age: 34 yrs)",
+          occ: "Tea Stall Vendor",
+          id: "Aadhaar: XXXX-XXXX-3341",
+          addr: "Station Road, Kalyan",
+          phone: "+91 93221 44556"
+        },
+        panch2: {
+          name: "Vikas Sawant (Age: 40 yrs)",
+          occ: "Auto Rickshaw Union Representative",
+          id: "Aadhaar: XXXX-XXXX-9901",
+          addr: "Rambaug, Kalyan",
+          phone: "+91 98200 11223"
+        },
+        rawHash: "9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8b",
+        p256Sig: "304502204a91...d1022100f9812",
+        blockNo: "#1039"
+      }
+    ];
+
+    let currentRole = "supervisor"; // "supervisor" or "admin"
+    let currentFilter = "ALL";
+    let activeDetailRecord = null;
+
+    // Initialize application on load
+    window.onload = function() {
+      renderTable();
+      updateRoleDisplay();
+    };
+
+    // Render Simple Logs Table
+    function renderTable(filterQuery = "") {
+      const tbody = document.getElementById("logsTableBody");
+      tbody.innerHTML = "";
+
+      let filtered = SEIZURE_DATA.filter(item => {
+        // Chip filter
+        if (currentFilter === "COMMERCIAL" && !item.isCommercial) return false;
+        if (currentFilter === "HEROIN" && !item.substance.includes("Heroin")) return false;
+        if (currentFilter === "COCAINE" && !item.substance.includes("Cocaine")) return false;
+        if (currentFilter === "CANNABIS" && !item.substance.includes("Cannabis") && !item.substance.includes("Charas")) return false;
+        if (currentFilter === "NASHIK" && !item.city.includes("Nashik")) return false;
+
+        // Search Query filter
+        if (filterQuery.trim() !== "") {
+          const q = filterQuery.toLowerCase();
+          const match = item.officer.toLowerCase().includes(q) ||
+                        item.city.toLowerCase().includes(q) ||
+                        item.crimeNo.toLowerCase().includes(q) ||
+                        item.substance.toLowerCase().includes(q) ||
+                        item.panch1.name.toLowerCase().includes(q) ||
+                        item.panch2.name.toLowerCase().includes(q) ||
+                        item.address.toLowerCase().includes(q);
+          if (!match) return false;
+        }
+        return true;
+      });
+
+      document.getElementById("recordCountPill").innerText = `Showing ${filtered.length} of ${SEIZURE_DATA.length} Records`;
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="6" style="text-align: center; padding: 40px; color: #64748B;">
+              No seizure records matching the specified criteria.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      filtered.forEach((item, index) => {
+        const initials = item.officer.split(" ").map(w => w[0]).filter(Boolean).slice(-2).join("");
+        const tr = document.createElement("tr");
+
+        tr.innerHTML = `
+          <td>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="width: 12px; height: 12px; border-radius: 50%; background: ${item.colorSwatch}; display: inline-block; box-shadow: 0 0 6px ${item.colorSwatch};"></span>
+              <strong>${item.substance.split(" ")[0]}</strong>
+              ${item.isCommercial ? '<span class="pill pill-red" style="font-size: 10px;">COMMERCIAL</span>' : ''}
+            </div>
+          </td>
+          <td>
+            <div class="officer-cell">
+              <div class="officer-avatar">${initials}</div>
+              <div class="officer-info">
+                <div class="name">${item.officer}</div>
+                <div class="badge">Badge: ${item.badge}</div>
+              </div>
+            </div>
+          </td>
+          <td>
+            <div class="location-cell">
+              <span class="city">${item.city}</span>
+              <span class="precinct">${item.precinct.split("/")[0]}</span>
+            </div>
+          </td>
+          <td>
+            <div class="timing-cell">${item.timing}</div>
+          </td>
+          <td>
+            <span class="pill pill-blue">${item.crimeNo}</span>
+          </td>
+          <td style="text-align: right;">
+            <button class="btn-show-details" onclick="openDetailCard('${item.id}')">
+              <span>Show Details</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </button>
+          </td>
+        `;
+
+        tbody.appendChild(tr);
+      });
+    }
+
+    // Search input handler
+    function handleSearch() {
+      const q = document.getElementById("searchInput").value;
+      renderTable(q);
+    }
+
+    // Filter Chips handler
+    function filterByChip(chipType, element) {
+      currentFilter = chipType;
+      document.querySelectorAll(".filter-chips .chip").forEach(c => c.classList.remove("active"));
+      element.classList.add("active");
+      handleSearch();
+    }
+
+    function resetFilters() {
+      document.getElementById("searchInput").value = "";
+      currentFilter = "ALL";
+      document.querySelectorAll(".filter-chips .chip").forEach(c => c.classList.remove("active"));
+      document.querySelector(".filter-chips .chip").classList.add("active");
+      renderTable();
+    }
+
+    // OPEN FALL TRANSITION BIG DETAIL CARD
+    function openDetailCard(recordId) {
+      const record = SEIZURE_DATA.find(r => r.id === recordId) || SEIZURE_DATA[0];
+      activeDetailRecord = record;
+
+      // Populate Big Card Elements
+      document.getElementById("cardDrugTitle").innerText = record.substance;
+      document.getElementById("cardQuantityBadge").innerText = record.isCommercial ? "COMMERCIAL QUANTITY (>250g)" : "INTERMEDIATE QUANTITY";
+      document.getElementById("cardQuantityBadge").className = record.isCommercial ? "pill pill-red" : "pill pill-blue";
+      document.getElementById("cardSubtitle").innerText = `Presumptive ${record.assayResult} • CIEDE2000 ΔE*₀₀: ${record.deltaE} (Conf: ${record.confidence}) • NDPS §52A Sealed`;
+
+      document.getElementById("d_crime_no").innerText = record.crimeNo;
+      document.getElementById("d_police_stn").innerText = record.policeStn;
+      document.getElementById("d_sections").innerText = record.sections;
+      document.getElementById("d_officer").innerText = `${record.officer} (Badge: ${record.badge})`;
+      document.getElementById("d_timing").innerText = record.timing;
+
+      document.getElementById("d_gross_wt").innerHTML = `<strong>${record.grossWt}</strong>`;
+      document.getElementById("d_net_wt").innerText = record.netWt;
+      document.getElementById("d_sampling").innerText = record.sampling;
+      document.getElementById("d_seal").innerText = record.seal;
+
+      document.getElementById("d_address").innerText = record.address;
+      document.getElementById("d_gps").innerText = `${record.gps} • Fix: 9 Satellites Locked`;
+      document.getElementById("d_precinct").innerText = record.precinct;
+
+      document.getElementById("d_appearance").innerText = record.appearance;
+      document.getElementById("d_packaging").innerText = record.packaging;
+      document.getElementById("d_properties").innerText = record.properties;
+
+      // Panch 1
+      const p1Html = `
+        <div class="witness-name">Panch Witness No. 1: ${record.panch1.name}</div>
+        <div class="witness-detail"><strong>Occupation:</strong> ${record.panch1.occ}</div>
+        <div class="witness-detail"><strong>ID Proof:</strong> ${record.panch1.id}</div>
+        <div class="witness-detail"><strong>Address:</strong> ${record.panch1.addr}</div>
+        <div class="witness-detail"><strong>Contact:</strong> ${record.panch1.phone} &bull; <em>Physical Panchnama Signed</em></div>
+      `;
+      // Panch 2
+      const p2Html = `
+        <div class="witness-name">Panch Witness No. 2: ${record.panch2.name}</div>
+        <div class="witness-detail"><strong>Occupation:</strong> ${record.panch2.occ}</div>
+        <div class="witness-detail"><strong>ID Proof:</strong> ${record.panch2.id}</div>
+        <div class="witness-detail"><strong>Address:</strong> ${record.panch2.addr}</div>
+        <div class="witness-detail"><strong>Contact:</strong> ${record.panch2.phone} &bull; <em>Physical Panchnama Signed</em></div>
+      `;
+      const witnessCards = document.querySelectorAll(".witness-container .witness-card");
+      if (witnessCards.length >= 2) {
+        witnessCards[0].innerHTML = p1Html;
+        witnessCards[1].innerHTML = p2Html;
+      }
+
+      // Show Backdrop and trigger smooth fall animation
+      const backdrop = document.getElementById("detailModalBackdrop");
+      backdrop.classList.add("active");
+      document.body.style.overflow = "hidden";
+    }
+
+    // CLOSE BIG DETAIL CARD & RETURN TO SIMPLE LOGS
+    function closeDetailCard() {
+      const backdrop = document.getElementById("detailModalBackdrop");
+      backdrop.classList.remove("active");
+      document.body.style.overflow = "auto";
+    }
+
+    function handleBackdropClick(event) {
+      if (event.target.id === "detailModalBackdrop") {
+        closeDetailCard();
+      }
+    }
+
+    // Section 63 BSA Certificate Modal
+    function openCertModal() {
+      document.getElementById("certModal").classList.add("active");
+    }
+    function closeCertModal() {
+      document.getElementById("certModal").classList.remove("active");
+    }
+
+    // Switch Role between Supervisor and Admin
+    function switchRole() {
+      currentRole = (currentRole === "supervisor") ? "admin" : "supervisor";
+      updateRoleDisplay();
+    }
+
+    function updateRoleDisplay() {
+      const userDisplay = document.getElementById("currentUserDisplay");
+      const adminPanel = document.getElementById("adminPanel");
+      const switchBtn = document.getElementById("roleSwitchLabel");
+
+      if (currentRole === "admin") {
+        userDisplay.innerHTML = `Role: <strong style="color: #60A5FA;">System Administrator (HQ)</strong>`;
+        adminPanel.style.display = "block";
+        switchBtn.innerText = "Switch to Supervisor";
+      } else {
+        userDisplay.innerHTML = `Role: <strong style="color: #34D399;">Supervisor (Field Audit)</strong>`;
+        adminPanel.style.display = "none";
+        switchBtn.innerText = "Switch to Admin";
+      }
+    }
+
+    // Login Overlay Handlers
+    function openLoginOverlay() {
+      document.getElementById("authOverlay").style.display = "flex";
+    }
+    function closeLoginOverlay() {
+      document.getElementById("authOverlay").style.display = "none";
+    }
+
+    let selectedLoginTab = "supervisor";
+    function selectLoginRole(role) {
+      selectedLoginTab = role;
+      document.getElementById("tabSupervisor").classList.toggle("active", role === "supervisor");
+      document.getElementById("tabAdmin").classList.toggle("active", role === "admin");
+      fillCreds(role);
+    }
+
+    function fillCreds(role) {
+      const u = document.getElementById("loginUsername");
+      const p = document.getElementById("loginPassword");
+      if (role === "admin") {
+        u.value = "admin";
+        p.value = "udtc@admin2026";
+        selectedLoginTab = "admin";
+        document.getElementById("tabAdmin").classList.add("active");
+        document.getElementById("tabSupervisor").classList.remove("active");
+      } else {
+        u.value = "supervisor";
+        p.value = "udtc@2026";
+        selectedLoginTab = "supervisor";
+        document.getElementById("tabSupervisor").classList.add("active");
+        document.getElementById("tabAdmin").classList.remove("active");
+      }
+    }
+
+    function handleLoginSubmit(event) {
+      event.preventDefault();
+      currentRole = selectedLoginTab;
+      updateRoleDisplay();
+      closeLoginOverlay();
+    }
+
+    // Admin Toolbar Actions
+    function runLedgerAudit() {
+      alert("✅ BLOCKCHAIN MERKLE VERIFICATION COMPLETE\n\n• Examined 24 blocks in SQLite vault\n• 0 Tampered blocks detected\n• TEE Keystore signatures 100% authentic\n• Merkle Root: a4f89d98e12048f761...\n\nStatus: FULLY ADMISSIBLE UNDER BSA §63");
+    }
+
+    function showSmsMonitor() {
+      alert("📡 2G SMS WITNESS GATEWAY (LIVE GSM-7 FEED)\n\n• [09:42:28] MHA|2026-DEL-0099|e3b0c44298fc|POS|19.932,73.748 [ACKNOWLEDGED]\n• [21:15:52] MHA|2026-PUN-0088|7b89d4218a5f|POS|18.591,73.738 [ACKNOWLEDGED]\n• [14:02:22] MHA|2026-DEL-0102|3f98c1192837|POS|28.556,77.099 [ACKNOWLEDGED]\n\nAll zero-connectivity border anchors synced.");
+    }
+
+    function exportAuditLog() {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(SEIZURE_DATA, null, 2));
+      const downloadAnchor = document.createElement("a");
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", "UDTC_Audit_Ledger_Export.json");
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    }
+  </script>
+</body>
+</html>

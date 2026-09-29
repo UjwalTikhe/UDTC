@@ -383,4 +383,20 @@ def get_records_alias(query: Optional[str] = None, kit_type: Optional[str] = Non
 def export_record_alias(test_id: str, purpose: str = 'Magistrate Court Submission', x_actor_id: str = Header('OFFICER-01'), x_role: str = Header('officer')):
     return download_bsa_certificate(test_id, x_actor_id, x_role)
 
+@app.get('/portal')
+@app.get('/')
+def serve_portal():
+    portal_path = os.path.join(os.path.dirname(__file__), '..', 'web_portal', 'index.html')
+    if os.path.exists(portal_path):
+        return FileResponse(portal_path, media_type='text/html')
+    return FileResponse('web_portal/index.html', media_type='text/html')
+
+@app.get('/app_logo.png')
+def serve_logo():
+    logo_path = os.path.join(os.path.dirname(__file__), '..', 'app_logo.png')
+    if os.path.exists(logo_path):
+        return FileResponse(logo_path, media_type='image/png')
+    return FileResponse('app_logo.png', media_type='image/png')
+
+
 
